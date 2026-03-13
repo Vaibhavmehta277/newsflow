@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
+import { useEffect, useRef, useState } from "react";
 import {
   Rss,
   LayoutDashboard,
@@ -14,6 +15,8 @@ import {
   LogOut,
   Zap,
   Youtube,
+  Shield,
+  Mail,
 } from "lucide-react";
 import type { ArticleCategory } from "@/types";
 
@@ -26,6 +29,8 @@ interface SidebarProps {
   onViewModeChange: (mode: "feed" | "youtube") => void;
   /** Badge count shown on the YouTube nav item. */
   videoCount?: number;
+  /** Hot lead count shown as 🔥 badge on the Leads nav item. */
+  leadsCount?: number;
 }
 
 const NAV_ITEMS = [
@@ -79,6 +84,10 @@ const NAV_ITEMS = [
   },
 ];
 
+// Cache for hot lead count — fetched once per 30 min app-wide
+let _cachedHotCount: number | undefined;
+let _cachedAt = 0;
+
 export default function Sidebar({
   activeCategory,
   onCategoryChange,
@@ -86,9 +95,34 @@ export default function Sidebar({
   viewMode,
   onViewModeChange,
   videoCount,
+  leadsCount,
 }: SidebarProps) {
   const pathname = usePathname();
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
+  const [hotLeadsCount, setHotLeadsCount] = useState<number | undefined>(leadsCount ?? _cachedHotCount);
+  const fetchedRef = useRef(false);
+
+  // Self-fetch hot lead count in the background (max once per 30 min)
+  useEffect(() => {
+    if (status !== "authenticated") return;
+    if (fetchedRef.current) return;
+    const staleness = Date.now() - _cachedAt;
+    if (_cachedHotCount !== undefined && staleness < 30 * 60 * 1000) {
+      setHotLeadsCount(_cachedHotCount);
+      return;
+    }
+    fetchedRef.current = true;
+    fetch("/api/leads")
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        if (data?.hot !== undefined) {
+          _cachedHotCount = data.hot;
+          _cachedAt = Date.now();
+          setHotLeadsCount(data.hot);
+        }
+      })
+      .catch(() => {});
+  }, [status]);
 
   const isYouTubeActive = viewMode === "youtube" && pathname === "/";
 
@@ -187,6 +221,75 @@ export default function Sidebar({
               </span>
             )}
           </button>
+        </div>
+
+        {/* ── Intelligence section ─────────────────────────────────────── */}
+        <div className="pt-3 mt-3 border-t border-zinc-800/60">
+          <p className="text-[10px] font-medium text-zinc-600 uppercase tracking-wider px-2 mb-2">
+            Intelligence
+          </p>
+
+          {/* Competitor Intel */}
+          <Link
+            href="/intel"
+            className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-sm transition-all ${
+              pathname === "/intel"
+                ? "bg-orange-500/20 text-orange-300 font-medium"
+                : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50"
+            }`}
+          >
+            <span className="flex items-center gap-2.5">
+              <Shield
+                className={`w-4 h-4 ${
+                  pathname === "/intel" ? "text-orange-400" : "text-orange-500"
+                }`}
+              />
+              Competitor Intel
+            </span>
+          </Link>
+
+          {/* Lead Alerts */}
+          <Link
+            href="/leads"
+            className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-sm transition-all ${
+              pathname === "/leads"
+                ? "bg-blue-500/20 text-blue-300 font-medium"
+                : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50"
+            }`}
+          >
+            <span className="flex items-center gap-2.5">
+              <Zap
+                className={`w-4 h-4 ${
+                  pathname === "/leads" ? "text-blue-400" : "text-blue-500"
+                }`}
+              />
+              Lead Alerts
+            </span>
+            {hotLeadsCount !== undefined && hotLeadsCount > 0 && (
+              <span className="flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-full bg-red-500 text-white font-bold animate-pulse">
+                🔥 {hotLeadsCount}
+              </span>
+            )}
+          </Link>
+
+          {/* Newsletter */}
+          <Link
+            href="/newsletter"
+            className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-sm transition-all ${
+              pathname === "/newsletter"
+                ? "bg-violet-500/20 text-violet-300 font-medium"
+                : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50"
+            }`}
+          >
+            <span className="flex items-center gap-2.5">
+              <Mail
+                className={`w-4 h-4 ${
+                  pathname === "/newsletter" ? "text-violet-400" : "text-violet-500"
+                }`}
+              />
+              Newsletter
+            </span>
+          </Link>
         </div>
 
         {/* ── Team section ─────────────────────────────────────────────── */}

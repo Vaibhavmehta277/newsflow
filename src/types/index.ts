@@ -81,3 +81,80 @@ export interface VideoItem {
   url: string;          // https://youtube.com/watch?v=ID
   searchKeyword: string; // Which keyword surfaced this video
 }
+
+// ── Feature 1: Competitor Intelligence ──────────────────────────────────────
+
+export interface IntelItem {
+  id: string;
+  competitor: string;              // Primary competitor name
+  mentionedCompetitors: string[];  // All competitors mentioned
+  title: string;
+  summary: string;
+  url: string;
+  source: string;
+  publishedAt: string;
+  opportunityNote: string;         // AI-generated sales opportunity note
+  score: number;                   // 1–10
+  tier: "hot" | "warm" | "watching"; // 8-10 | 5-7 | 1-4
+  platform: "reddit" | "rss" | "hn" | "github" | "producthunt";
+}
+
+// ── Feature 2: Lead Trigger Alerts ──────────────────────────────────────────
+
+export type LeadTriggerCategory =
+  | "pain-point"
+  | "solution-seeking"
+  | "competitor-comparison"
+  | "industry-specific";
+
+export interface LeadItem {
+  id: string;
+  title: string;
+  summary: string;
+  url: string;
+  source: string;
+  publishedAt: string;
+  triggerPhrases: string[];
+  triggerCategory: LeadTriggerCategory;
+  outreachDraft: string;           // AI-generated personalized outreach
+  score: number;                   // 1–10
+  platform: "reddit" | "rss" | "youtube" | "hn" | "github" | "producthunt";
+}
+
+// ── Feature 3: Weekly Newsletter ─────────────────────────────────────────────
+
+export interface NewsletterArticle {
+  title: string;
+  source: string;
+  url: string;
+  summary: string;
+}
+
+export interface NewsletterVideo {
+  title: string;
+  channel: string;
+  url: string;
+  summary: string;
+}
+
+export interface NewsletterCompetitorWatch {
+  competitor: string;
+  insight: string;
+  opportunity: string;
+}
+
+export interface Newsletter {
+  id: string;
+  generatedAt: string;
+  weekOf: string;
+  subject: string;
+  previewText: string;
+  intro: string;
+  articles: NewsletterArticle[];
+  videos: NewsletterVideo[];
+  competitorWatch: NewsletterCompetitorWatch[];
+  marketSignal: string;
+  cta: string;
+  htmlContent: string;
+  plainText: string;
+}

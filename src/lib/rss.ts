@@ -114,7 +114,8 @@ async function fetchSource(
 // Simple in-memory cache
 let cachedArticles: Article[] = [];
 let lastFetchTime = 0;
-const CACHE_TTL = 15 * 60 * 1000; // 15 minutes
+const CACHE_TTL = 60 * 60 * 1000; // 60 minutes (main feed is less time-sensitive)
+const FEED_MAX_AGE = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 export async function fetchAllFeeds(forceRefresh = false): Promise<Article[]> {
   const now = Date.now();
@@ -133,15 +134,21 @@ export async function fetchAllFeeds(forceRefresh = false): Promise<Article[]> {
     }
   }
 
+  // Filter to last 7 days
+  const cutoff = now - FEED_MAX_AGE;
+  const fresh = allArticles.filter(
+    (a) => new Date(a.publishedAt).getTime() >= cutoff
+  );
+
   // Sort by date, newest first
-  allArticles.sort(
+  fresh.sort(
     (a, b) =>
       new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()
   );
 
   // Deduplicate by URL
   const seen = new Set<string>();
-  const deduped = allArticles.filter((a) => {
+  const deduped = fresh.filter((a) => {
     if (seen.has(a.url)) return false;
     seen.add(a.url);
     return true;
