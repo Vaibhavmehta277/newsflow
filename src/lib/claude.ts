@@ -1,7 +1,7 @@
-import Anthropic from "@anthropic-ai/sdk";
+import OpenAI from "openai";
 
-const client = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY!,
+const client = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY!,
 });
 
 interface GenerateCaptionsInput {
@@ -74,20 +74,21 @@ ${requestedInstructions}
 Format your response as JSON with keys: ${platforms.map((p) => `"${p}"`).join(", ")}
 Only include the caption text as the value — no labels or extra formatting.`;
 
-  const message = await client.messages.create({
-    model: "claude-sonnet-4-6",
+  const completion = await client.chat.completions.create({
+    model: "gpt-4o-mini",
     max_tokens: 1024,
-    system: systemPrompt,
-    messages: [{ role: "user", content: userPrompt }],
+    messages: [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userPrompt },
+    ],
   });
 
-  const responseText =
-    message.content[0].type === "text" ? message.content[0].text : "";
+  const responseText = completion.choices[0]?.message?.content ?? "";
 
   // Extract JSON from response
   const jsonMatch = responseText.match(/\{[\s\S]*\}/);
   if (!jsonMatch) {
-    throw new Error("Failed to parse captions from Claude response");
+    throw new Error("Failed to parse captions from OpenAI response");
   }
 
   return JSON.parse(jsonMatch[0]) as GeneratedCaptions;

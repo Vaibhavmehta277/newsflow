@@ -67,3 +67,17 @@ export interface KeywordGroup {
   color: string;
   bgColor: string;
 }
+
+export interface VideoItem {
+  id: string;           // YouTube video ID
+  title: string;
+  channelName: string;
+  channelId: string;
+  publishedAt: string;  // ISO 8601
+  thumbnailUrl: string;
+  description: string;  // First 300 chars of video description
+  viewCount: number;
+  likeCount?: number;
+  url: string;          // https://youtube.com/watch?v=ID
+  searchKeyword: string; // Which keyword surfaced this video
+}

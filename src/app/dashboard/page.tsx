@@ -32,6 +32,8 @@ export default function DashboardPage() {
       <Sidebar
         activeCategory={"all" as ArticleCategory | "all"}
         onCategoryChange={() => router.push("/")}
+        viewMode="feed"
+        onViewModeChange={() => router.push("/")}
       />
       <main className="flex-1 overflow-y-auto">
         <Dashboard />

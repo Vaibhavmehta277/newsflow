@@ -13,6 +13,7 @@ import {
   Newspaper,
   LogOut,
   Zap,
+  Youtube,
 } from "lucide-react";
 import type { ArticleCategory } from "@/types";
 
@@ -20,6 +21,11 @@ interface SidebarProps {
   activeCategory: ArticleCategory | "all";
   onCategoryChange: (cat: ArticleCategory | "all") => void;
   counts?: Partial<Record<ArticleCategory | "all", number>>;
+  /** Controls whether the RSS feed or YouTube section is active. */
+  viewMode: "feed" | "youtube";
+  onViewModeChange: (mode: "feed" | "youtube") => void;
+  /** Badge count shown on the YouTube nav item. */
+  videoCount?: number;
 }
 
 const NAV_ITEMS = [
@@ -77,9 +83,14 @@ export default function Sidebar({
   activeCategory,
   onCategoryChange,
   counts = {},
+  viewMode,
+  onViewModeChange,
+  videoCount,
 }: SidebarProps) {
   const pathname = usePathname();
   const { data: session } = useSession();
+
+  const isYouTubeActive = viewMode === "youtube" && pathname === "/";
 
   return (
     <aside className="w-60 shrink-0 h-screen sticky top-0 flex flex-col bg-[#111113] border-r border-zinc-800/60">
@@ -98,17 +109,26 @@ export default function Sidebar({
 
       {/* Navigation */}
       <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
+
+        {/* ── RSS Feed section ─────────────────────────────────────────── */}
         <p className="text-[10px] font-medium text-zinc-600 uppercase tracking-wider px-2 mb-2">
           Feed
         </p>
         {NAV_ITEMS.map((item) => {
-          const isActive = activeCategory === item.category && pathname === "/";
+          // Only highlight when in feed mode, matching category, on home route
+          const isActive =
+            viewMode === "feed" &&
+            activeCategory === item.category &&
+            pathname === "/";
           const Icon = item.icon;
           const count = counts[item.category];
           return (
             <button
               key={item.category}
-              onClick={() => onCategoryChange(item.category)}
+              onClick={() => {
+                onViewModeChange("feed"); // switch back from YouTube if needed
+                onCategoryChange(item.category);
+              }}
               className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-sm transition-all ${
                 isActive
                   ? `${item.activeBg} ${item.activeColor} font-medium`
@@ -134,6 +154,42 @@ export default function Sidebar({
           );
         })}
 
+        {/* ── Discover section (YouTube) ───────────────────────────────── */}
+        <div className="pt-3 mt-3 border-t border-zinc-800/60">
+          <p className="text-[10px] font-medium text-zinc-600 uppercase tracking-wider px-2 mb-2">
+            Discover
+          </p>
+          <button
+            onClick={() => onViewModeChange("youtube")}
+            className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-sm transition-all ${
+              isYouTubeActive
+                ? "bg-red-500/20 text-red-300 font-medium"
+                : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50"
+            }`}
+          >
+            <span className="flex items-center gap-2.5">
+              <Youtube
+                className={`w-4 h-4 ${
+                  isYouTubeActive ? "text-red-400" : "text-red-500"
+                }`}
+              />
+              YouTube
+            </span>
+            {videoCount !== undefined && videoCount > 0 && (
+              <span
+                className={`text-[10px] px-1.5 py-0.5 rounded-full ${
+                  isYouTubeActive
+                    ? "bg-white/10 text-white"
+                    : "bg-zinc-800 text-zinc-500"
+                }`}
+              >
+                {videoCount}
+              </span>
+            )}
+          </button>
+        </div>
+
+        {/* ── Team section ─────────────────────────────────────────────── */}
         <div className="pt-3 mt-3 border-t border-zinc-800/60">
           <p className="text-[10px] font-medium text-zinc-600 uppercase tracking-wider px-2 mb-2">
             Team
