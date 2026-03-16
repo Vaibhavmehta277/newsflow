@@ -54,7 +54,7 @@ function CaptionPanel({
   };
 
   return (
-    <div className={`rounded-xl border p-4 ${meta.bg}`}>
+    <div className={`rounded-[6px] border p-4 ${meta.bg}`}>
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <Icon className={`w-4 h-4 ${meta.color}`} />
@@ -66,7 +66,7 @@ function CaptionPanel({
           {meta.charLimit && (
             <span
               className={`text-[11px] font-mono ${
-                isOverLimit ? "text-red-400" : "text-zinc-500"
+                isOverLimit ? "text-[var(--red)]" : "text-[var(--text-muted)]"
               }`}
             >
               {charCount}/{meta.charLimit}
@@ -75,19 +75,19 @@ function CaptionPanel({
           {onLog && (
             <button
               onClick={onLog}
-              className="text-[11px] px-2 py-1 rounded bg-zinc-800 text-zinc-400 hover:text-zinc-200 border border-zinc-700 transition-colors"
+              className="text-[11px] px-2 py-1 rounded-[4px] bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--border)] transition-colors"
             >
               Log
             </button>
           )}
           <button
             onClick={handleCopy}
-            className="flex items-center gap-1 text-[11px] px-2 py-1 rounded bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-700 transition-all"
+            className="flex items-center gap-1 text-[11px] px-2 py-1 rounded-[4px] bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--border)] transition-all"
           >
             {copied ? (
               <>
-                <Check className="w-3 h-3 text-emerald-400" />
-                <span className="text-emerald-400">Copied</span>
+                <Check className="w-3 h-3 text-[var(--green)]" />
+                <span className="text-[var(--green)]">Copied</span>
               </>
             ) : (
               <>
@@ -98,7 +98,7 @@ function CaptionPanel({
           </button>
         </div>
       </div>
-      <pre className="text-xs text-zinc-300 whitespace-pre-wrap leading-relaxed font-sans">
+      <pre className="text-xs text-[var(--text-secondary)] whitespace-pre-wrap leading-relaxed font-sans">
         {content}
       </pre>
     </div>

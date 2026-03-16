@@ -4,8 +4,8 @@ export const KEYWORD_GROUPS: KeywordGroup[] = [
   {
     label: "Voice AI Core",
     category: "voice-ai",
-    color: "text-violet-400",
-    bgColor: "bg-violet-500/15 text-violet-300 border-violet-500/30",
+    color: "text-[var(--accent)]",
+    bgColor: "bg-[var(--accent-subtle)] text-[var(--accent)] border-[var(--accent-border)]",
     keywords: [
       "voice ai",
       "ai voice agent",
@@ -32,9 +32,10 @@ export const KEYWORD_GROUPS: KeywordGroup[] = [
   {
     label: "Use Cases",
     category: "use-case",
-    color: "text-blue-400",
-    bgColor: "bg-blue-500/15 text-blue-300 border-blue-500/30",
+    color: "text-[var(--text-secondary)]",
+    bgColor: "bg-[var(--bg-elevated)] text-[var(--text-secondary)] border-[var(--border)]",
     keywords: [
+      // original
       "ai for healthcare",
       "medical receptionist ai",
       "clinic automation",
@@ -47,13 +48,28 @@ export const KEYWORD_GROUPS: KeywordGroup[] = [
       "ai interviewer",
       "ai customer support",
       "automated customer service",
+      // new — broader use-case signals
+      "use case",
+      "customer story",
+      "case study",
+      "how we built",
+      "how i use",
+      "real world",
+      "in production",
+      "deployed",
+      "saves time",
+      "real-world deployment",
+      "production ai",
+      "customer success",
+      "workflow automation",
+      "roi of ai",
     ],
   },
   {
     label: "Market Intel",
     category: "market-intel",
-    color: "text-amber-400",
-    bgColor: "bg-amber-500/15 text-amber-300 border-amber-500/30",
+    color: "text-[var(--amber)]",
+    bgColor: "bg-[var(--amber-subtle)] text-[var(--amber)] border-[var(--amber)]",
     keywords: [
       "vapi ai",
       "retell ai",
@@ -70,8 +86,8 @@ export const KEYWORD_GROUPS: KeywordGroup[] = [
   {
     label: "CX & Contact Center",
     category: "cx",
-    color: "text-emerald-400",
-    bgColor: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
+    color: "text-[var(--green)]",
+    bgColor: "bg-[var(--green-subtle)] text-[var(--green)] border-[var(--green)]",
     keywords: [
       "contact center",
       "call center",
@@ -86,8 +102,8 @@ export const KEYWORD_GROUPS: KeywordGroup[] = [
   {
     label: "AI News",
     category: "ai-news",
-    color: "text-rose-400",
-    bgColor: "bg-rose-500/15 text-rose-300 border-rose-500/30",
+    color: "text-[var(--text-secondary)]",
+    bgColor: "bg-[var(--bg-elevated)] text-[var(--text-secondary)] border-[var(--border)]",
     keywords: [
       "artificial intelligence",
       "large language model",
@@ -115,7 +131,6 @@ export function detectKeywords(text: string): {
   const matched: string[] = [];
   let topCategory: import("@/types").ArticleCategory = "ai-news";
 
-  // Priority order: voice-ai > use-case > market-intel > cx > ai-news
   const priorityOrder: import("@/types").ArticleCategory[] = [
     "voice-ai",
     "use-case",
@@ -148,7 +163,7 @@ export function detectKeywords(text: string): {
 }
 
 export const RSS_SOURCES: RSSSource[] = [
-  // Voice AI Specific - High Priority
+  // ── Voice AI Specific — High Priority ──────────────────────────────────────
   {
     name: "Voicebot.ai",
     slug: "voicebot",
@@ -177,7 +192,7 @@ export const RSS_SOURCES: RSSSource[] = [
     priority: "high",
     category: "voice-ai",
   },
-  // AI News - Broad
+  // ── Reliable Broad AI News ──────────────────────────────────────────────────
   {
     name: "TechCrunch AI",
     slug: "techcrunch",
@@ -213,7 +228,51 @@ export const RSS_SOURCES: RSSSource[] = [
     priority: "medium",
     category: "ai-news",
   },
-  // Newsletters
+  // ── HN / Community ─────────────────────────────────────────────────────────
+  {
+    name: "Hacker News",
+    slug: "hackernews",
+    url: "https://hnrss.org/frontpage",
+    priority: "medium",
+    category: "ai-news",
+  },
+  {
+    name: "HN Voice AI",
+    slug: "hn-voice-ai",
+    url: "https://hnrss.org/newest?q=voice+ai",
+    priority: "high",
+    category: "voice-ai",
+  },
+  {
+    name: "HN AI Agents",
+    slug: "hn-ai-agents",
+    url: "https://hnrss.org/newest?q=ai+agent",
+    priority: "medium",
+    category: "ai-news",
+  },
+  // ── Reddit ──────────────────────────────────────────────────────────────────
+  {
+    name: "Reddit AI",
+    slug: "reddit-ai",
+    url: "https://www.reddit.com/r/artificial/new/.rss",
+    priority: "medium",
+    category: "ai-news",
+  },
+  {
+    name: "Reddit ML",
+    slug: "reddit-ml",
+    url: "https://www.reddit.com/r/MachineLearning/new/.rss",
+    priority: "medium",
+    category: "ai-news",
+  },
+  {
+    name: "Reddit Startups",
+    slug: "reddit-startups",
+    url: "https://www.reddit.com/r/startups/new/.rss",
+    priority: "medium",
+    category: "ai-news",
+  },
+  // ── Newsletters ─────────────────────────────────────────────────────────────
   {
     name: "Ben's Bites",
     slug: "bensbites",
@@ -228,7 +287,7 @@ export const RSS_SOURCES: RSSSource[] = [
     priority: "medium",
     category: "ai-news",
   },
-  // CX & Contact Center
+  // ── CX & Contact Center ─────────────────────────────────────────────────────
   {
     name: "CX Today",
     slug: "cxtoday",
@@ -250,7 +309,7 @@ export const RSS_SOURCES: RSSSource[] = [
     priority: "medium",
     category: "cx",
   },
-  // Additional AI / Tech News
+  // ── Additional Tech / AI ────────────────────────────────────────────────────
   {
     name: "Wired",
     slug: "wired",
@@ -300,7 +359,7 @@ export const RSS_SOURCES: RSSSource[] = [
     priority: "medium",
     category: "ai-news",
   },
-  // Startups & Funding
+  // ── Startups & Funding ──────────────────────────────────────────────────────
   {
     name: "Crunchbase News",
     slug: "crunchbase",
@@ -330,18 +389,18 @@ export const RSS_SOURCES: RSSSource[] = [
     category: "market-intel",
   },
   {
-    name: "Hacker News",
-    slug: "hackernews",
-    url: "https://news.ycombinator.com/rss",
-    priority: "medium",
-    category: "ai-news",
-  },
-  {
     name: "Product Hunt",
     slug: "producthunt",
     url: "https://www.producthunt.com/feed",
     priority: "medium",
     category: "market-intel",
+  },
+  {
+    name: "VentureBeat AI (alt)",
+    slug: "venturebeat-alt",
+    url: "https://feeds.feedburner.com/venturebeat/SZYF",
+    priority: "medium",
+    category: "ai-news",
   },
 ];
 
@@ -351,32 +410,32 @@ export const CATEGORY_META: Record<
 > = {
   "voice-ai": {
     label: "Voice AI",
-    color: "text-violet-400",
-    bgColor: "bg-violet-500/15 text-violet-300 border border-violet-500/30",
-    dotColor: "bg-violet-400",
+    color: "text-[var(--accent)]",
+    bgColor: "bg-[var(--accent-subtle)] text-[var(--accent)] border border-[var(--accent-border)]",
+    dotColor: "bg-[var(--accent)]",
   },
   "use-case": {
     label: "Use Case",
-    color: "text-blue-400",
-    bgColor: "bg-blue-500/15 text-blue-300 border border-blue-500/30",
-    dotColor: "bg-blue-400",
+    color: "text-[var(--text-secondary)]",
+    bgColor: "bg-[var(--bg-elevated)] text-[var(--text-secondary)] border border-[var(--border)]",
+    dotColor: "bg-[var(--text-secondary)]",
   },
   "market-intel": {
     label: "Market Intel",
-    color: "text-amber-400",
-    bgColor: "bg-amber-500/15 text-amber-300 border border-amber-500/30",
-    dotColor: "bg-amber-400",
+    color: "text-[var(--amber)]",
+    bgColor: "bg-[var(--amber-subtle)] text-[var(--amber)] border border-[var(--amber)]",
+    dotColor: "bg-[var(--amber)]",
   },
   cx: {
     label: "CX & CC",
-    color: "text-emerald-400",
-    bgColor: "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30",
-    dotColor: "bg-emerald-400",
+    color: "text-[var(--green)]",
+    bgColor: "bg-[var(--green-subtle)] text-[var(--green)] border border-[var(--green)]",
+    dotColor: "bg-[var(--green)]",
   },
   "ai-news": {
     label: "AI News",
-    color: "text-rose-400",
-    bgColor: "bg-rose-500/15 text-rose-300 border border-rose-500/30",
-    dotColor: "bg-rose-400",
+    color: "text-[var(--text-secondary)]",
+    bgColor: "bg-[var(--bg-elevated)] text-[var(--text-secondary)] border border-[var(--border)]",
+    dotColor: "bg-[var(--text-secondary)]",
   },
 };

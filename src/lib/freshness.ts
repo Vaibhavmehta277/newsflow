@@ -13,27 +13,27 @@ export function getFreshnessInfo(publishedAt: string): FreshnessInfo {
 
     if (hours < 1) {
       return {
-        label: "🔴 Live",
-        colorClass: "bg-red-500/15 text-red-300 border border-red-500/25",
+        label: "Live",
+        colorClass: "bg-[var(--red-subtle)] text-[var(--red)] border border-[var(--red)]",
         ageHours: hours,
       };
     }
     if (hours < 24) {
       return {
-        label: "🟡 Recent",
-        colorClass: "bg-amber-500/15 text-amber-300 border border-amber-500/25",
+        label: "Recent",
+        colorClass: "bg-[var(--amber-subtle)] text-[var(--amber)] border border-[var(--amber)]",
         ageHours: hours,
       };
     }
     return {
-      label: "⚪ Older",
-      colorClass: "bg-zinc-800/50 text-zinc-500 border border-zinc-700/50",
+      label: "Older",
+      colorClass: "bg-[var(--bg-elevated)] text-[var(--text-muted)] border border-[var(--border)]",
       ageHours: hours,
     };
   } catch {
     return {
-      label: "⚪ Older",
-      colorClass: "bg-zinc-800/50 text-zinc-500 border border-zinc-700/50",
+      label: "Older",
+      colorClass: "bg-[var(--bg-elevated)] text-[var(--text-muted)] border border-[var(--border)]",
       ageHours: 999,
     };
   }
@@ -63,17 +63,17 @@ export function getPlatformBadgeClass(
 ): string {
   switch (platform) {
     case "reddit":
-      return "bg-orange-500/15 text-orange-400";
+      return "bg-[var(--amber-subtle)] text-[var(--amber)]";
     case "hn":
-      return "bg-amber-700/20 text-amber-400";
+      return "bg-[var(--amber-subtle)] text-[var(--amber)]";
     case "github":
-      return "bg-violet-500/15 text-violet-400";
+      return "bg-[var(--accent-subtle)] text-[var(--accent)]";
     case "producthunt":
-      return "bg-red-700/20 text-orange-300";
+      return "bg-[var(--red-subtle)] text-[var(--red)]";
     case "youtube":
-      return "bg-red-500/20 text-red-400";
+      return "bg-[var(--red-subtle)] text-[var(--red)]";
     default:
-      return "bg-zinc-800 text-zinc-500";
+      return "bg-[var(--bg-elevated)] text-[var(--text-muted)]";
   }
 }
 

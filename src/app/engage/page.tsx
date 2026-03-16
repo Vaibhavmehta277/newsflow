@@ -4,9 +4,9 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import Sidebar from "@/components/Sidebar";
-import IntelDashboard from "@/components/IntelDashboard";
+import EngageDashboard from "@/components/EngageDashboard";
 
-export default function IntelPage() {
+export default function EngagePage() {
   const { data: session, status } = useSession();
   const router = useRouter();
 
@@ -33,7 +33,7 @@ export default function IntelPage() {
         onViewModeChange={() => router.push("/")}
       />
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <IntelDashboard />
+        <EngageDashboard />
       </main>
     </div>
   );

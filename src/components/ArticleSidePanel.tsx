@@ -122,37 +122,33 @@ export default function ArticleSidePanel({
     }
   };
 
-  const handleSaveArticle = () => {
-    handleLogToSheets("", "", "saved");
-  };
-
-  const handleMarkPosted = (platform: string, caption: string) => {
+  const handleSaveArticle = () => handleLogToSheets("", "", "saved");
+  const handleMarkPosted = (platform: string, caption: string) =>
     handleLogToSheets(platform, caption, "posted");
-  };
 
   return (
-    <aside className="w-[420px] shrink-0 h-screen sticky top-0 flex flex-col bg-[#111113] border-l border-zinc-800/60 overflow-y-auto">
+    <aside className="w-[420px] shrink-0 h-screen sticky top-0 flex flex-col bg-[var(--bg-surface)] border-l border-[var(--border)] overflow-y-auto">
       {/* Header */}
-      <div className="flex items-start justify-between px-5 py-4 border-b border-zinc-800/60 sticky top-0 bg-[#111113] z-10">
+      <div className="flex items-start justify-between px-5 py-4 border-b border-[var(--border)] sticky top-0 bg-[var(--bg-surface)] z-10">
         <div className="flex-1 min-w-0 pr-3">
           <div className="flex items-center gap-2 mb-1.5">
             <span
-              className={`text-[10px] px-2 py-0.5 rounded-full border font-medium ${meta.bgColor}`}
+              className={`text-[10px] px-2 py-0.5 rounded-[4px] border font-medium ${meta.bgColor}`}
             >
               {meta.label}
             </span>
-            <span className="text-[11px] text-zinc-600">
+            <span className="text-[11px] text-[var(--text-muted)]">
               {format(new Date(article.publishedAt), "MMM d, yyyy")}
             </span>
           </div>
-          <h2 className="text-sm font-semibold text-zinc-100 leading-snug">
+          <h2 className="text-sm font-semibold text-[var(--text-primary)] leading-snug">
             {article.title}
           </h2>
-          <p className="text-[11px] text-zinc-500 mt-1">{article.source}</p>
+          <p className="text-[11px] text-[var(--text-muted)] mt-1">{article.source}</p>
         </div>
         <button
           onClick={onClose}
-          className="text-zinc-600 hover:text-zinc-400 transition-colors shrink-0"
+          className="text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors shrink-0"
         >
           <X className="w-4 h-4" />
         </button>
@@ -163,14 +159,14 @@ export default function ArticleSidePanel({
         {/* Summary */}
         {article.summary && (
           <div>
-            <p className="text-xs text-zinc-500 leading-relaxed">
+            <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
               {article.summary}
             </p>
             <a
               href={article.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-[11px] text-violet-400 hover:text-violet-300 mt-2 transition-colors"
+              className="inline-flex items-center gap-1 text-[11px] text-[var(--accent)] hover:opacity-80 mt-2 transition-opacity"
             >
               Read full article <ExternalLink className="w-3 h-3" />
             </a>
@@ -180,14 +176,14 @@ export default function ArticleSidePanel({
         {/* Keywords */}
         {article.keywords.length > 0 && (
           <div>
-            <p className="text-[10px] font-medium text-zinc-600 uppercase tracking-wider mb-2">
+            <p className="text-[10px] font-medium text-[var(--text-muted)] uppercase tracking-wider mb-2">
               Keywords
             </p>
             <div className="flex flex-wrap gap-1.5">
               {article.keywords.map((kw) => (
                 <span
                   key={kw}
-                  className="text-[11px] px-2 py-0.5 rounded bg-zinc-800 text-zinc-400 border border-zinc-700/50"
+                  className="text-[11px] px-2 py-0.5 rounded-[4px] bg-[var(--bg-elevated)] text-[var(--text-secondary)] border border-[var(--border)]"
                 >
                   {kw}
                 </span>
@@ -196,12 +192,11 @@ export default function ArticleSidePanel({
           </div>
         )}
 
-        {/* Divider */}
-        <div className="border-t border-zinc-800/60" />
+        <div className="border-t border-[var(--border)]" />
 
         {/* Caption Generator */}
         <div>
-          <p className="text-[10px] font-medium text-zinc-600 uppercase tracking-wider mb-3">
+          <p className="text-[10px] font-medium text-[var(--text-muted)] uppercase tracking-wider mb-3">
             Generate Captions
           </p>
 
@@ -211,10 +206,10 @@ export default function ArticleSidePanel({
               <button
                 key={key}
                 onClick={() => togglePlatform(key)}
-                className={`text-[11px] px-2.5 py-1 rounded-lg border transition-all ${
+                className={`text-[11px] px-2.5 py-1 rounded-[4px] border transition-all ${
                   selectedPlatforms.has(key)
-                    ? "bg-violet-500/20 text-violet-300 border-violet-500/40"
-                    : "bg-zinc-900 text-zinc-500 border-zinc-800 hover:border-zinc-700"
+                    ? "bg-[var(--accent-subtle)] text-[var(--accent)] border-[var(--accent-border)]"
+                    : "bg-[var(--bg-surface)] text-[var(--text-muted)] border-[var(--border)] hover:border-[var(--text-muted)]"
                 }`}
               >
                 {label}
@@ -228,11 +223,11 @@ export default function ArticleSidePanel({
             onChange={(e) => setComment(e.target.value)}
             placeholder="Add your angle, insight, or talking point... (optional)"
             rows={3}
-            className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2.5 text-xs text-zinc-300 placeholder-zinc-600 focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/20 resize-none transition-all"
+            className="w-full bg-[var(--bg-base)] border border-[var(--border)] rounded-[6px] px-3 py-2.5 text-xs text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--accent-border)] focus:ring-1 focus:ring-[var(--accent-border)] resize-none transition-all"
           />
 
           {generateError && (
-            <div className="flex items-center gap-1.5 mt-2 text-[11px] text-red-400">
+            <div className="flex items-center gap-1.5 mt-2 text-[11px] text-[var(--red)]">
               <AlertCircle className="w-3.5 h-3.5" />
               {generateError}
             </div>
@@ -241,7 +236,7 @@ export default function ArticleSidePanel({
           <button
             onClick={handleGenerate}
             disabled={isGenerating}
-            className="w-full mt-3 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-gradient-to-r from-violet-600 to-blue-600 hover:from-violet-500 hover:to-blue-500 text-white text-sm font-medium transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+            className="w-full mt-3 flex items-center justify-center gap-2 px-4 py-2.5 rounded-[6px] bg-[var(--accent)] hover:opacity-90 text-white text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isGenerating ? (
               <>
@@ -264,13 +259,13 @@ export default function ArticleSidePanel({
               onClick={() => setShowCaptions((v) => !v)}
               className="flex items-center justify-between w-full mb-3"
             >
-              <p className="text-[10px] font-medium text-zinc-600 uppercase tracking-wider">
+              <p className="text-[10px] font-medium text-[var(--text-muted)] uppercase tracking-wider">
                 Generated Captions
               </p>
               {showCaptions ? (
-                <ChevronUp className="w-3.5 h-3.5 text-zinc-600" />
+                <ChevronUp className="w-3.5 h-3.5 text-[var(--text-muted)]" />
               ) : (
-                <ChevronDown className="w-3.5 h-3.5 text-zinc-600" />
+                <ChevronDown className="w-3.5 h-3.5 text-[var(--text-muted)]" />
               )}
             </button>
             {showCaptions && (
@@ -285,15 +280,15 @@ export default function ArticleSidePanel({
         )}
 
         {/* Actions */}
-        <div className="border-t border-zinc-800/60 pt-4">
-          <p className="text-[10px] font-medium text-zinc-600 uppercase tracking-wider mb-3">
+        <div className="border-t border-[var(--border)] pt-4">
+          <p className="text-[10px] font-medium text-[var(--text-muted)] uppercase tracking-wider mb-3">
             Actions
           </p>
           <div className="grid grid-cols-2 gap-2">
             <button
               onClick={handleSaveArticle}
               disabled={logStatus === "loading"}
-              className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-zinc-300 text-xs font-medium transition-all"
+              className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-[6px] bg-[var(--bg-elevated)] hover:bg-[var(--bg-hover)] border border-[var(--border)] text-[var(--text-secondary)] text-xs font-medium transition-all"
             >
               <BookmarkCheck className="w-3.5 h-3.5" />
               Save to Sheet
@@ -301,22 +296,21 @@ export default function ArticleSidePanel({
             <button
               onClick={() => handleLogToSheets("", "", "skipped")}
               disabled={logStatus === "loading"}
-              className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-zinc-500 text-xs font-medium transition-all"
+              className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-[6px] bg-[var(--bg-elevated)] hover:bg-[var(--bg-hover)] border border-[var(--border)] text-[var(--text-muted)] text-xs font-medium transition-all"
             >
               <XCircle className="w-3.5 h-3.5" />
               Skip
             </button>
           </div>
 
-          {/* Log status */}
           {logStatus === "success" && (
-            <div className="flex items-center gap-1.5 mt-2 text-[11px] text-emerald-400">
+            <div className="flex items-center gap-1.5 mt-2 text-[11px] text-[var(--green)]">
               <CheckCircle2 className="w-3.5 h-3.5" />
               Logged to Google Sheets
             </div>
           )}
           {logStatus === "error" && (
-            <div className="flex items-center gap-1.5 mt-2 text-[11px] text-red-400">
+            <div className="flex items-center gap-1.5 mt-2 text-[11px] text-[var(--red)]">
               <AlertCircle className="w-3.5 h-3.5" />
               Failed to log. Check Sheets config.
             </div>

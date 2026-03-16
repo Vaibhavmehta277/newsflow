@@ -4,7 +4,7 @@ import type { Article } from "@/types";
 import { RSS_SOURCES, detectKeywords } from "./keywords";
 
 const parser = new Parser({
-  timeout: 10000,
+  timeout: 8000,
   headers: {
     "User-Agent":
       "Mozilla/5.0 (compatible; NewsFlowBot/1.0; +https://newsflow.app)",
@@ -54,11 +54,20 @@ function cleanSummary(text: string): string {
     .slice(0, 300);
 }
 
+async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error(`Timed out after ${ms}ms`)), ms)
+    ),
+  ]);
+}
+
 async function fetchSource(
   source: (typeof RSS_SOURCES)[0]
 ): Promise<Article[]> {
   try {
-    const feed = await parser.parseURL(source.url);
+    const feed = await withTimeout(parser.parseURL(source.url), 8000);
     const articles: Article[] = [];
 
     for (const item of (feed.items || []).slice(0, 20)) {
@@ -127,11 +136,20 @@ export async function fetchAllFeeds(forceRefresh = false): Promise<Article[]> {
     RSS_SOURCES.map((source) => fetchSource(source))
   );
 
+  let succeeded = 0;
+  let failed = 0;
   const allArticles: Article[] = [];
   for (const result of results) {
     if (result.status === "fulfilled") {
       allArticles.push(...result.value);
+      succeeded++;
+    } else {
+      failed++;
     }
+  }
+
+  if (process.env.NODE_ENV === "development") {
+    console.log(`[RSS] ${succeeded}/${RSS_SOURCES.length} sources OK, ${failed} failed`);
   }
 
   // Filter to last 7 days

@@ -1,92 +1,163 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import {
-  FileText,
-  CheckCircle2,
-  Newspaper,
-  Users,
-  TrendingUp,
-  Clock,
-  ExternalLink,
-} from "lucide-react";
-import { format } from "date-fns";
-import type { SheetRow } from "@/types";
-import { CATEGORY_META } from "@/lib/keywords";
+import { ExternalLink } from "lucide-react";
+import { formatDistanceToNow, isToday } from "date-fns";
+import type { IntelItem, EngageItem } from "@/types";
+
+const PLATFORM_LABEL: Record<string, string> = {
+  reddit: "Reddit",
+  hn: "Hacker News",
+  producthunt: "Product Hunt",
+  rss: "RSS",
+};
+
+const TIER_COLOR: Record<string, string> = {
+  hot: "text-[var(--red)]",
+  warm: "text-[var(--amber)]",
+  watching: "text-[var(--text-muted)]",
+};
+
+interface BriefingData {
+  articlesTotal: number;
+  hotIntel: number;
+  leadCount: number;
+  engageCount: number;
+  topStory: IntelItem | null;
+  bestEngage: EngageItem | null;
+}
 
 function StatCard({
   label,
   value,
-  icon: Icon,
-  color,
+  sub,
+  accent,
 }: {
   label: string;
-  value: number | string;
-  icon: React.ElementType;
-  color: string;
+  value: number;
+  sub: string;
+  accent?: "red" | "amber" | "green" | "accent";
 }) {
+  const valueColor =
+    accent === "red"
+      ? "text-[var(--red)]"
+      : accent === "amber"
+      ? "text-[var(--amber)]"
+      : accent === "green"
+      ? "text-[var(--green)]"
+      : "text-[var(--accent)]";
+
   return (
-    <div className="bg-zinc-900/60 border border-zinc-800/60 rounded-xl p-4">
-      <div className="flex items-center justify-between mb-3">
-        <span className="text-xs text-zinc-500">{label}</span>
-        <div className={`p-2 rounded-lg bg-zinc-800 ${color}`}>
-          <Icon className="w-3.5 h-3.5" />
-        </div>
-      </div>
-      <p className="text-2xl font-semibold text-zinc-100">{value}</p>
+    <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-[6px] p-4">
+      <p className="text-[10px] font-medium text-[var(--text-muted)] uppercase tracking-[0.07em] mb-2">
+        {label}
+      </p>
+      <p className={`text-2xl font-semibold ${valueColor}`}>{value}</p>
+      <p className="text-[11px] text-[var(--text-muted)] mt-0.5">{sub}</p>
     </div>
   );
 }
 
 export default function Dashboard() {
-  const [rows, setRows] = useState<SheetRow[]>([]);
+  const [data, setData] = useState<BriefingData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
 
+  const fetchAll = async (forceRefresh = false) => {
+    if (forceRefresh) setRefreshing(true);
+    else setLoading(true);
+    setError("");
+
+    try {
+      const [feedsRes, intelRes, leadsRes, engageRes] = await Promise.allSettled([
+        fetch("/api/feeds?limit=200"),
+        fetch("/api/intel"),
+        fetch("/api/leads"),
+        fetch("/api/engage"),
+      ]);
+
+      const safeJson = async (r: PromiseSettledResult<Response>) => {
+        if (r.status !== "fulfilled" || !r.value.ok) return null;
+        try {
+          return await r.value.json();
+        } catch {
+          return null;
+        }
+      };
+
+      const [feedsData, intelData, leadsData, engageData] = await Promise.all([
+        safeJson(feedsRes),
+        safeJson(intelRes),
+        safeJson(leadsRes),
+        safeJson(engageRes),
+      ]);
+
+      const articles: { publishedAt: string }[] = feedsData?.articles ?? [];
+      const todayCount = articles.filter((a) => isToday(new Date(a.publishedAt))).length;
+
+      const intelItems: IntelItem[] = intelData?.items ?? [];
+      const engageItems: EngageItem[] = engageData?.items ?? [];
+      const leadItems: unknown[] = leadsData?.items ?? [];
+
+      setData({
+        articlesTotal: todayCount,
+        hotIntel: intelData?.hot ?? 0,
+        leadCount: leadItems.length,
+        engageCount: engageItems.length,
+        topStory: intelItems[0] ?? null,
+        bestEngage: engageItems[0] ?? null,
+      });
+    } catch {
+      setError("Failed to load briefing data.");
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchRows = async () => {
-      try {
-        const res = await fetch("/api/sheets");
-        if (!res.ok) throw new Error("Failed to fetch");
-        const { rows: data } = await res.json();
-        setRows(data || []);
-      } catch {
-        setError("Could not load data from Google Sheets.");
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchRows();
+    fetchAll();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Compute stats
-  const today = format(new Date(), "yyyy-MM-dd");
-  const todayRows = rows.filter((r) => r.date.startsWith(today));
-  const postedRows = rows.filter((r) => r.status === "posted");
-  const savedRows = rows.filter((r) => r.status === "saved");
-
-  // Most active team member
-  const memberCounts: Record<string, number> = {};
-  for (const row of rows) {
-    if (row.assignedTo) {
-      memberCounts[row.assignedTo] = (memberCounts[row.assignedTo] || 0) + 1;
-    }
-  }
-  const topMember =
-    Object.entries(memberCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || "—";
-
-  // Platform breakdown
-  const platformCounts: Record<string, number> = {};
-  for (const row of rows.filter((r) => r.platform)) {
-    platformCounts[row.platform] = (platformCounts[row.platform] || 0) + 1;
-  }
+  const dateStr = new Date().toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+  });
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-5 h-5 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
-          <p className="text-sm text-zinc-500">Loading dashboard...</p>
+      <div className="p-6 space-y-6 animate-pulse">
+        <div className="space-y-1.5">
+          <div className="h-3.5 bg-[var(--bg-elevated)] rounded-[4px] w-36" />
+          <div className="h-2.5 bg-[var(--bg-elevated)] rounded-[4px] w-52" />
+        </div>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div
+              key={i}
+              className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-[6px] p-4 space-y-3"
+            >
+              <div className="h-2.5 bg-[var(--bg-elevated)] rounded-[4px] w-20" />
+              <div className="h-6 bg-[var(--bg-elevated)] rounded-[4px] w-10" />
+              <div className="h-2.5 bg-[var(--bg-elevated)] rounded-[4px] w-16" />
+            </div>
+          ))}
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {[0, 1].map((i) => (
+            <div
+              key={i}
+              className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-[6px] p-4 space-y-3"
+            >
+              <div className="h-2.5 bg-[var(--bg-elevated)] rounded-[4px] w-32" />
+              <div className="h-4 bg-[var(--bg-elevated)] rounded-[4px] w-3/4" />
+              <div className="h-3 bg-[var(--bg-elevated)] rounded-[4px] w-full" />
+              <div className="h-3 bg-[var(--bg-elevated)] rounded-[4px] w-2/3" />
+            </div>
+          ))}
         </div>
       </div>
     );
@@ -95,201 +166,164 @@ export default function Dashboard() {
   if (error) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <p className="text-sm text-zinc-400 mb-1">{error}</p>
-          <p className="text-xs text-zinc-600">
-            Make sure your Google Sheets is configured correctly.
-          </p>
-        </div>
+        <p className="text-sm text-[var(--text-secondary)]">{error}</p>
       </div>
     );
   }
 
   return (
-    <div className="p-6 space-y-6">
-      <div>
-        <h1 className="text-lg font-semibold text-zinc-100">Dashboard</h1>
-        <p className="text-sm text-zinc-500 mt-0.5">
-          Team content activity overview
-        </p>
+    <div className="p-6 space-y-6 max-w-5xl">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-[13px] font-semibold text-[var(--text-primary)]">
+            Morning Briefing
+          </h1>
+          <p className="text-[11px] text-[var(--text-muted)]">{dateStr}</p>
+        </div>
+        <button
+          onClick={() => fetchAll(true)}
+          disabled={refreshing}
+          className="h-[30px] px-3 rounded-[4px] text-[13px] text-[var(--text-secondary)] bg-[var(--bg-elevated)] border border-[var(--border)] hover:text-[var(--text-primary)] transition-colors disabled:opacity-50"
+        >
+          {refreshing ? "Refreshing…" : "Refresh"}
+        </button>
       </div>
 
-      {/* Stats */}
+      {/* Stat cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <StatCard
-          label="Articles Today"
-          value={todayRows.length}
-          icon={Newspaper}
-          color="text-violet-400"
+          label="Articles today"
+          value={data?.articlesTotal ?? 0}
+          sub="in feed"
+          accent="accent"
         />
         <StatCard
-          label="Total Saved"
-          value={savedRows.length}
-          icon={FileText}
-          color="text-blue-400"
+          label="Hot intel"
+          value={data?.hotIntel ?? 0}
+          sub="signals"
+          accent="red"
         />
         <StatCard
-          label="Total Posted"
-          value={postedRows.length}
-          icon={CheckCircle2}
-          color="text-emerald-400"
+          label="Active leads"
+          value={data?.leadCount ?? 0}
+          sub="alerts"
+          accent="amber"
         />
         <StatCard
-          label="Most Active"
-          value={topMember.split(" ")[0]}
-          icon={Users}
-          color="text-amber-400"
+          label="Engage"
+          value={data?.engageCount ?? 0}
+          sub="opportunities"
+          accent="green"
         />
       </div>
 
-      {/* Platform breakdown + recent activity */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Platform breakdown */}
-        {Object.keys(platformCounts).length > 0 && (
-          <div className="bg-zinc-900/60 border border-zinc-800/60 rounded-xl p-4">
-            <div className="flex items-center gap-2 mb-4">
-              <TrendingUp className="w-4 h-4 text-zinc-500" />
-              <h3 className="text-sm font-medium text-zinc-300">
-                Posts by Platform
-              </h3>
-            </div>
-            <div className="space-y-3">
-              {Object.entries(platformCounts)
-                .sort((a, b) => b[1] - a[1])
-                .map(([platform, count]) => {
-                  const max = Math.max(...Object.values(platformCounts));
-                  return (
-                    <div key={platform}>
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-xs text-zinc-400 capitalize">
-                          {platform}
-                        </span>
-                        <span className="text-xs text-zinc-500">{count}</span>
-                      </div>
-                      <div className="h-1.5 bg-zinc-800 rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-gradient-to-r from-violet-500 to-blue-500 rounded-full"
-                          style={{ width: `${(count / max) * 100}%` }}
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
-            </div>
-          </div>
-        )}
+      {/* Spotlight row */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Top story right now */}
+        <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-[6px] p-4">
+          <p className="text-[10px] font-medium text-[var(--text-muted)] uppercase tracking-[0.07em] mb-3">
+            Top story right now
+          </p>
 
-        {/* Recent activity */}
-        <div
-          className={`${Object.keys(platformCounts).length > 0 ? "lg:col-span-2" : "lg:col-span-3"} bg-zinc-900/60 border border-zinc-800/60 rounded-xl p-4`}
-        >
-          <div className="flex items-center gap-2 mb-4">
-            <Clock className="w-4 h-4 text-zinc-500" />
-            <h3 className="text-sm font-medium text-zinc-300">
-              Recent Activity
-            </h3>
-          </div>
-          {rows.length === 0 ? (
-            <p className="text-xs text-zinc-600 text-center py-8">
-              No activity yet. Start curating articles!
-            </p>
-          ) : (
-            <div className="space-y-2">
-              {rows.slice(0, 10).map((row, i) => {
-                const statusColors: Record<string, string> = {
-                  posted: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
-                  saved: "text-blue-400 bg-blue-500/10 border-blue-500/20",
-                  skipped: "text-zinc-500 bg-zinc-800 border-zinc-700",
-                };
-                return (
-                  <div
-                    key={i}
-                    className="flex items-start gap-3 py-2 border-b border-zinc-800/40 last:border-0"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-0.5">
-                        <span
-                          className={`text-[10px] px-1.5 py-0.5 rounded border font-medium ${statusColors[row.status] || statusColors.saved}`}
-                        >
-                          {row.status}
-                        </span>
-                        {row.platform && (
-                          <span className="text-[10px] text-zinc-600 capitalize">
-                            {row.platform}
-                          </span>
-                        )}
-                        <span className="text-[10px] text-zinc-700">·</span>
-                        <span className="text-[10px] text-zinc-600">
-                          {row.assignedTo}
-                        </span>
-                      </div>
-                      <p className="text-xs text-zinc-400 truncate">
-                        {row.title}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <span className="text-[10px] text-zinc-700">
-                        {row.date.split(" ")[1] || row.date}
-                      </span>
-                      {row.url && (
-                        <a
-                          href={row.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-zinc-700 hover:text-zinc-400"
-                        >
-                          <ExternalLink className="w-3 h-3" />
-                        </a>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
+          {data?.topStory ? (
+            <div>
+              <div className="flex items-center gap-2 mb-2 flex-wrap">
+                <span className="text-[11px] px-1.5 py-0.5 rounded-[4px] bg-[var(--bg-elevated)] border border-[var(--border)] text-[var(--text-secondary)] font-medium">
+                  {data.topStory.competitor}
+                </span>
+                <span className={`text-[11px] font-medium ${TIER_COLOR[data.topStory.tier] ?? "text-[var(--text-muted)]"}`}>
+                  {data.topStory.tier.charAt(0).toUpperCase() + data.topStory.tier.slice(1)}
+                </span>
+                <span className="text-[11px] text-[var(--text-muted)]">
+                  {data.topStory.score}/10
+                </span>
+              </div>
+
+              <p className="text-[13px] font-medium text-[var(--text-primary)] leading-snug mb-1.5">
+                {data.topStory.title}
+              </p>
+
+              {data.topStory.summary && (
+                <p className="text-[12px] text-[var(--text-secondary)] leading-relaxed line-clamp-2 mb-3">
+                  {data.topStory.summary}
+                </p>
+              )}
+
+              <div className="border-t border-[var(--border-subtle)] pt-2.5 flex items-center justify-between">
+                <span className="text-[11px] text-[var(--text-muted)]">
+                  {data.topStory.source} ·{" "}
+                  {formatDistanceToNow(new Date(data.topStory.publishedAt), {
+                    addSuffix: true,
+                  })}
+                </span>
+                <a
+                  href={data.topStory.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1 text-[12px] text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors"
+                >
+                  View <ExternalLink className="w-3 h-3" />
+                </a>
+              </div>
             </div>
+          ) : (
+            <p className="text-[12px] text-[var(--text-muted)] py-6 text-center">
+              No intel available yet
+            </p>
+          )}
+        </div>
+
+        {/* Best engage opportunity */}
+        <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-[6px] p-4">
+          <p className="text-[10px] font-medium text-[var(--text-muted)] uppercase tracking-[0.07em] mb-3">
+            Best engage opportunity
+          </p>
+
+          {data?.bestEngage ? (
+            <div>
+              <p className="text-[11px] text-[var(--text-muted)] mb-1.5">
+                {PLATFORM_LABEL[data.bestEngage.platform] ?? data.bestEngage.platform} ·{" "}
+                {data.bestEngage.source}
+              </p>
+
+              <p className="text-[13px] font-medium text-[var(--text-primary)] leading-snug mb-2 line-clamp-2">
+                {data.bestEngage.title}
+              </p>
+
+              {data.bestEngage.replyDraft && (
+                <p className="text-[12px] text-[var(--text-secondary)] leading-relaxed line-clamp-2 mb-3 italic">
+                  &ldquo;
+                  {data.bestEngage.replyDraft.length > 120
+                    ? data.bestEngage.replyDraft.slice(0, 120) + "…"
+                    : data.bestEngage.replyDraft}
+                  &rdquo;
+                </p>
+              )}
+
+              <div className="border-t border-[var(--border-subtle)] pt-2.5 flex items-center justify-between">
+                <span className="text-[11px] text-[var(--text-muted)]">
+                  {formatDistanceToNow(new Date(data.bestEngage.publishedAt), {
+                    addSuffix: true,
+                  })}
+                </span>
+                <a
+                  href={data.bestEngage.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1 text-[12px] text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors"
+                >
+                  View thread <ExternalLink className="w-3 h-3" />
+                </a>
+              </div>
+            </div>
+          ) : (
+            <p className="text-[12px] text-[var(--text-muted)] py-6 text-center">
+              No engagement opportunities yet
+            </p>
           )}
         </div>
       </div>
-
-      {/* Category breakdown */}
-      {rows.length > 0 && (
-        <div className="bg-zinc-900/60 border border-zinc-800/60 rounded-xl p-4">
-          <h3 className="text-sm font-medium text-zinc-300 mb-4">
-            Articles by Category
-          </h3>
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-            {Object.entries(CATEGORY_META).map(([cat, meta]) => {
-              const count = rows.filter((r) => {
-                // Best effort match on keyword tag
-                const tag = r.keywordTag?.toLowerCase() || "";
-                return (
-                  (cat === "voice-ai" &&
-                    (tag.includes("voice") || tag.includes("tts"))) ||
-                  (cat === "use-case" && tag.includes("ai for")) ||
-                  (cat === "market-intel" &&
-                    (tag.includes("vapi") ||
-                      tag.includes("elevenlabs") ||
-                      tag.includes("funding"))) ||
-                  (cat === "cx" &&
-                    (tag.includes("contact") || tag.includes("customer"))) ||
-                  cat === "ai-news"
-                );
-              }).length;
-              return (
-                <div
-                  key={cat}
-                  className="flex items-center gap-2 p-3 rounded-lg bg-zinc-800/50 border border-zinc-700/30"
-                >
-                  <div className={`w-2 h-2 rounded-full ${meta.dotColor}`} />
-                  <div>
-                    <p className="text-[10px] text-zinc-500">{meta.label}</p>
-                    <p className="text-sm font-medium text-zinc-300">{count}</p>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
     </div>
   );
 }

@@ -158,3 +158,29 @@ export interface Newsletter {
   htmlContent: string;
   plainText: string;
 }
+
+// ── Feature 4: Community Engage ──────────────────────────────────────────────
+
+export type EngageTopicTag =
+  | "voice-ai-discussion"
+  | "competitor-mention"
+  | "pain-point-thread"
+  | "solution-request"
+  | "industry-news";
+
+export interface EngageItem {
+  id: string;
+  title: string;
+  snippet: string;              // Relevant excerpt / post body
+  url: string;
+  source: string;               // e.g. "Reddit · r/SaaS"
+  publishedAt: string;
+  platform: "reddit" | "hn" | "producthunt";
+  topicTag: EngageTopicTag;
+  engagementAngle: string;      // AI-generated angle: why/how to engage
+  replyDraft: string;           // AI-generated public comment draft
+  score: number;                // 1–10 engagement value
+  tier: "hot" | "warm" | "watching"; // 8-10 | 5-7 | 1-4
+  isConversational: boolean;    // true only if a human is asking/seeking/frustrated
+  commentCount?: number;        // Thread activity indicator
+}

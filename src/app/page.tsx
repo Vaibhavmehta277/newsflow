@@ -110,7 +110,6 @@ export default function Home() {
     categoryCounts[a.category] = (categoryCounts[a.category] ?? 0) + 1;
   }
 
-  // Client-side search filter for videos (server already cached full list)
   const filteredVideos = search
     ? videos.filter((v) => {
         const q = search.toLowerCase();
@@ -126,11 +125,8 @@ export default function Home() {
   // ── Loading / auth gate ───────────────────────────────────────────────────
   if (status === "loading") {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#09090b]">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-6 h-6 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
-          <p className="text-sm text-zinc-500">Loading...</p>
-        </div>
+      <div className="min-h-screen flex items-center justify-center bg-[var(--bg-base)]">
+        <div className="w-6 h-6 border-2 border-[var(--border)] border-t-[var(--accent)] rounded-full animate-spin" />
       </div>
     );
   }
@@ -141,7 +137,7 @@ export default function Home() {
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <div className="flex h-screen overflow-hidden bg-[#09090b]">
+    <div className="flex h-screen overflow-hidden bg-[var(--bg-base)]">
 
       {/* Sidebar */}
       <Sidebar
@@ -159,12 +155,11 @@ export default function Home() {
       {/* Main content */}
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
 
-        {/* Filter bar — shared by both modes */}
+        {/* Filter bar */}
         <FilterBar
           search={search}
           onSearchChange={(val) => {
             setSearch(val);
-            // Clear selected panel when search changes
             if (isYouTube) setSelectedVideo(null);
             else setSelectedArticle(null);
           }}
@@ -177,16 +172,22 @@ export default function Home() {
         {/* Content grid */}
         <div className="flex-1 overflow-y-auto">
           {isYouTube ? (
-            /* ── YouTube video grid ─────────────────────────────────────── */
             videoLoading ? (
-              <div className="flex flex-col items-center justify-center h-64 gap-4">
-                <div className="w-6 h-6 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />
-                <p className="text-sm text-zinc-500">Fetching YouTube videos…</p>
+              <div className="p-6 grid grid-cols-1 xl:grid-cols-2 gap-3">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div key={i} className="rounded-[6px] bg-[var(--bg-surface)] border border-[var(--border)] overflow-hidden animate-pulse">
+                    <div className="w-full aspect-video bg-[var(--bg-elevated)]" />
+                    <div className="p-3.5 space-y-2">
+                      <div className="h-3 bg-[var(--bg-elevated)] rounded-[4px] w-3/4" />
+                      <div className="h-3 bg-[var(--bg-elevated)] rounded-[4px] w-1/2" />
+                    </div>
+                  </div>
+                ))}
               </div>
             ) : filteredVideos.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-64 gap-2">
-                <p className="text-sm text-zinc-400">No videos found</p>
-                <p className="text-xs text-zinc-600">
+                <p className="text-sm text-[var(--text-secondary)]">No videos found</p>
+                <p className="text-xs text-[var(--text-muted)]">
                   {search
                     ? "Try a different search term"
                     : "Add YOUTUBE_API_KEY to .env.local and restart"}
@@ -209,16 +210,26 @@ export default function Home() {
               </div>
             )
           ) : (
-            /* ── RSS article grid (unchanged) ───────────────────────────── */
             loading ? (
-              <div className="flex flex-col items-center justify-center h-64 gap-4">
-                <div className="w-6 h-6 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
-                <p className="text-sm text-zinc-500">Fetching latest articles...</p>
+              <div className="p-4 grid grid-cols-1 xl:grid-cols-2 gap-3">
+                {Array.from({ length: 8 }).map((_, i) => (
+                  <div key={i} className="rounded-[6px] bg-[var(--bg-surface)] border border-[var(--border)] p-4 animate-pulse space-y-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-1.5 h-1.5 rounded-full bg-[var(--bg-elevated)]" />
+                      <div className="h-2.5 bg-[var(--bg-elevated)] rounded-[4px] w-24" />
+                      <div className="ml-auto h-2.5 bg-[var(--bg-elevated)] rounded-[4px] w-16" />
+                    </div>
+                    <div className="h-4 bg-[var(--bg-elevated)] rounded-[4px] w-full" />
+                    <div className="h-4 bg-[var(--bg-elevated)] rounded-[4px] w-2/3" />
+                    <div className="h-3 bg-[var(--bg-elevated)] rounded-[4px] w-full" />
+                    <div className="h-3 bg-[var(--bg-elevated)] rounded-[4px] w-4/5" />
+                  </div>
+                ))}
               </div>
             ) : articles.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-64 gap-2">
-                <p className="text-sm text-zinc-400">No articles found</p>
-                <p className="text-xs text-zinc-600">
+                <p className="text-sm text-[var(--text-secondary)]">No articles found</p>
+                <p className="text-xs text-[var(--text-muted)]">
                   {search
                     ? "Try a different search term"
                     : "Check your RSS feed configuration"}
@@ -244,7 +255,7 @@ export default function Home() {
         </div>
       </main>
 
-      {/* Side panels — only one is ever visible at a time */}
+      {/* Side panels */}
       {!isYouTube && selectedArticle && (
         <ArticleSidePanel
           article={selectedArticle}

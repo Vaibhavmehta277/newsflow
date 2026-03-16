@@ -19,8 +19,8 @@ export default function DashboardPage() {
 
   if (status === "loading") {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#09090b]">
-        <div className="w-6 h-6 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen flex items-center justify-center bg-[var(--bg-base)]">
+        <div className="w-6 h-6 border-2 border-[var(--border)] border-t-[var(--accent)] rounded-full animate-spin" />
       </div>
     );
   }
@@ -28,7 +28,7 @@ export default function DashboardPage() {
   if (!session) return null;
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[#09090b]">
+    <div className="flex h-screen overflow-hidden bg-[var(--bg-base)]">
       <Sidebar
         activeCategory={"all" as ArticleCategory | "all"}
         onCategoryChange={() => router.push("/")}

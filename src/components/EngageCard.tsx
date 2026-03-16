@@ -2,24 +2,30 @@
 
 import { ExternalLink } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
-import type { LeadItem, LeadTriggerCategory } from "@/types";
+import type { EngageItem, EngageTopicTag } from "@/types";
 
-interface LeadCardProps {
-  item: LeadItem;
+interface EngageCardProps {
+  item: EngageItem;
   isSelected: boolean;
   onClick: () => void;
 }
 
-const CATEGORY_CONFIG: Record<LeadTriggerCategory, { label: string; textColor: string }> = {
-  "pain-point": { label: "Pain Point", textColor: "text-[var(--red)]" },
-  "solution-seeking": { label: "Solution Seeking", textColor: "text-[var(--accent)]" },
-  "competitor-comparison": { label: "Competitor Comparison", textColor: "text-[var(--amber)]" },
-  "industry-specific": { label: "Industry Signal", textColor: "text-[var(--text-secondary)]" },
+const TIER_CONFIG = {
+  hot: { label: "Hot", textColor: "text-[var(--red)]" },
+  warm: { label: "Warm", textColor: "text-[var(--amber)]" },
+  watching: { label: "Watching", textColor: "text-[var(--text-muted)]" },
+} as const;
+
+const TAG_LABELS: Record<EngageTopicTag, string> = {
+  "voice-ai-discussion": "Voice AI",
+  "competitor-mention": "Competitor",
+  "pain-point-thread": "Pain Point",
+  "solution-request": "Solution Request",
+  "industry-news": "Industry News",
 };
 
-export default function LeadCard({ item, isSelected, onClick }: LeadCardProps) {
-  const cat = CATEGORY_CONFIG[item.triggerCategory];
-  const isHot = item.score >= 7;
+export default function EngageCard({ item, isSelected, onClick }: EngageCardProps) {
+  const tier = TIER_CONFIG[item.tier];
 
   const timeAgo = (() => {
     try { return formatDistanceToNow(new Date(item.publishedAt), { addSuffix: true }); }
@@ -27,7 +33,7 @@ export default function LeadCard({ item, isSelected, onClick }: LeadCardProps) {
   })();
 
   const platformLabel: Record<string, string> = {
-    reddit: "Reddit", rss: "RSS", youtube: "YouTube", hn: "HN", github: "GitHub", producthunt: "Product Hunt",
+    reddit: "Reddit", hn: "HN", producthunt: "Product Hunt",
   };
 
   return (
@@ -36,14 +42,17 @@ export default function LeadCard({ item, isSelected, onClick }: LeadCardProps) {
       className={`rounded-[6px] border bg-[var(--bg-surface)] p-4 cursor-pointer transition-all ${
         isSelected
           ? "border-[var(--accent-border)] ring-1 ring-[var(--accent-border)] bg-[var(--accent-subtle)]"
-          : isHot
-          ? "border-[var(--border)] hover:border-[var(--red)]/30 hover:bg-[var(--bg-elevated)]"
           : "border-[var(--border)] hover:border-[#2e2e2e] hover:bg-[var(--bg-elevated)]"
       }`}
     >
       {/* Top row */}
       <div className="flex items-center justify-between gap-3 mb-2.5">
-        <span className={`text-[11px] font-medium ${cat.textColor}`}>{cat.label}</span>
+        <div className="flex items-center gap-2">
+          <span className={`text-[11px] font-medium ${tier.textColor}`}>{tier.label}</span>
+          <span className="text-[11px] text-[var(--text-muted)]">
+            {TAG_LABELS[item.topicTag] ?? item.topicTag}
+          </span>
+        </div>
         <span className="text-[11px] text-[var(--text-muted)] shrink-0">{item.score}/10</span>
       </div>
 
@@ -52,9 +61,9 @@ export default function LeadCard({ item, isSelected, onClick }: LeadCardProps) {
         {item.title}
       </h3>
 
-      {/* Summary */}
+      {/* Snippet */}
       <p className="text-[13px] text-[var(--text-secondary)] leading-relaxed line-clamp-2">
-        {item.summary}
+        {item.snippet}
       </p>
 
       {/* Divider */}
