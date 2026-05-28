@@ -1,7 +1,7 @@
 "use client";
 
 import { formatDistanceToNow } from "date-fns";
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, ArrowRight } from "lucide-react";
 import type { Article } from "@/types";
 
 interface ArticleCardProps {
@@ -9,6 +9,14 @@ interface ArticleCardProps {
   isSelected: boolean;
   onClick: () => void;
 }
+
+const CATEGORY_LABELS: Record<string, string> = {
+  "voice-ai": "Voice AI",
+  "use-case": "Use Case",
+  "market-intel": "Market Intel",
+  cx: "CX",
+  "ai-news": "AI News",
+};
 
 export default function ArticleCard({
   article,
@@ -22,13 +30,13 @@ export default function ArticleCard({
   return (
     <div
       onClick={onClick}
-      className={`group relative p-4 rounded-xl border cursor-pointer transition-colors ${
+      className={`group relative p-4 rounded-xl border cursor-pointer transition-all duration-150 ${
         isSelected
-          ? "bg-gray-50 border-gray-300"
-          : "bg-white border-gray-200 hover:border-gray-300 hover:bg-gray-50/50"
+          ? "bg-gray-50 border-gray-900 ring-1 ring-gray-900/5"
+          : "bg-white border-gray-200 hover:border-gray-300 hover:shadow-sm"
       }`}
     >
-      <div className="flex items-center gap-2 mb-2">
+      <div className="flex items-center gap-2 mb-2.5">
         <span className="text-[12px] text-gray-500 font-medium">
           {article.source}
         </span>
@@ -36,11 +44,11 @@ export default function ArticleCard({
         <span className="text-[12px] text-gray-400">{timeAgo}</span>
         <div className="flex-1" />
         <span className="text-[11px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 font-medium">
-          {article.category.replace("-", " ")}
+          {CATEGORY_LABELS[article.category] || article.category}
         </span>
       </div>
 
-      <h3 className="text-[14px] font-medium leading-snug text-gray-900 mb-1.5">
+      <h3 className="text-[14px] font-semibold leading-snug text-gray-900 mb-1.5 group-hover:text-black transition-colors">
         {article.title}
       </h3>
 
@@ -50,26 +58,35 @@ export default function ArticleCard({
         </p>
       )}
 
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between pt-1">
         <div className="flex flex-wrap gap-1.5">
           {article.keywords.slice(0, 3).map((kw) => (
             <span
               key={kw}
-              className="text-[11px] px-2 py-0.5 rounded-md bg-gray-100 text-gray-500"
+              className="text-[11px] px-2 py-0.5 rounded-md bg-gray-50 text-gray-500 border border-gray-100"
             >
               {kw}
             </span>
           ))}
         </div>
-        <a
-          href={article.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          onClick={(e) => e.stopPropagation()}
-          className="text-gray-400 hover:text-gray-600 transition-colors"
-        >
-          <ExternalLink className="w-3.5 h-3.5" />
-        </a>
+        <div className="flex items-center gap-2 shrink-0">
+          <a
+            href={article.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className="text-gray-300 hover:text-gray-500 transition-colors"
+          >
+            <ExternalLink className="w-3.5 h-3.5" />
+          </a>
+          <ArrowRight
+            className={`w-3.5 h-3.5 transition-all ${
+              isSelected
+                ? "text-gray-900 translate-x-0.5"
+                : "text-gray-300 group-hover:text-gray-400"
+            }`}
+          />
+        </div>
       </div>
     </div>
   );
