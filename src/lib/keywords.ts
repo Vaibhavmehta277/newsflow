@@ -18,7 +18,6 @@ export const KEYWORD_GROUPS: KeywordGroup[] = [
       "outbound ai calling",
       "ai sales calls",
       "automated calling",
-      "appointment booking ai",
       "ai scheduling",
       "ai phone agent",
       "text to speech",
@@ -39,11 +38,9 @@ export const KEYWORD_GROUPS: KeywordGroup[] = [
       "medical receptionist ai",
       "clinic automation",
       "ai for real estate",
-      "property ai assistant",
       "ai for restaurants",
       "restaurant reservation ai",
       "ai recruitment",
-      "hr voice bot",
       "ai interviewer",
       "ai customer support",
       "automated customer service",
@@ -56,7 +53,6 @@ export const KEYWORD_GROUPS: KeywordGroup[] = [
     label: "Market Intel",
     category: "market-intel",
     keywords: [
-      "vapi ai",
       "vapi",
       "retell ai",
       "retell",
@@ -65,11 +61,9 @@ export const KEYWORD_GROUPS: KeywordGroup[] = [
       "synthflow",
       "voice ai startup",
       "voice ai funding",
-      "conversational ai investment",
       "voice ai company",
       "voice ai platform",
       "voice ai acquisition",
-      "voice ai partnership",
     ],
   },
   {
@@ -79,11 +73,8 @@ export const KEYWORD_GROUPS: KeywordGroup[] = [
       "contact center ai",
       "call center ai",
       "customer experience ai",
-      "customer service automation",
       "ivr replacement",
-      "interactive voice response",
       "cx automation",
-      "omnichannel ai",
       "contact center automation",
     ],
   },
@@ -92,13 +83,10 @@ export const KEYWORD_GROUPS: KeywordGroup[] = [
     category: "ai-news",
     keywords: [
       "large language model",
-      "llm",
       "generative ai",
       "ai agent",
       "openai",
       "anthropic",
-      "google ai",
-      "microsoft ai",
       "ai startup funding",
     ],
   },
@@ -147,39 +135,103 @@ export function detectKeywords(text: string): {
   };
 }
 
-// Curated RSS sources — focused on voice AI and direct industry relevance.
-// Removed broad tech sources (The Verge, Ars Technica, Ben's Bites, TLDR AI)
-// that were pulling in too many irrelevant articles.
+// ─── RSS Sources ──────────────────────────────────────────────────────────────
+// Organized by PURPOSE, not by blog name. Each source is tagged so articles
+// route automatically to the correct section (Competitor Watch, Lead Alerts, Feed).
+
 export const RSS_SOURCES: RSSSource[] = [
-  // Voice AI — High Priority (always show)
+  // ── COMPETITOR TRACKING (Google News — last 7 days) ──
+  {
+    name: "Google News",
+    slug: "gnews-vapi",
+    url: "https://news.google.com/rss/search?q=vapi+ai+OR+%22vapi+voice%22+when:7d&hl=en-US&gl=US&ceid=US:en",
+    priority: "high",
+    category: "market-intel",
+    tag: "competitor",
+  },
+  {
+    name: "Google News",
+    slug: "gnews-retell",
+    url: "https://news.google.com/rss/search?q=%22retell+ai%22+when:7d&hl=en-US&gl=US&ceid=US:en",
+    priority: "high",
+    category: "market-intel",
+    tag: "competitor",
+  },
+  {
+    name: "Google News",
+    slug: "gnews-elevenlabs",
+    url: "https://news.google.com/rss/search?q=elevenlabs+when:7d&hl=en-US&gl=US&ceid=US:en",
+    priority: "high",
+    category: "market-intel",
+    tag: "competitor",
+  },
+  {
+    name: "Google News",
+    slug: "gnews-blandai",
+    url: "https://news.google.com/rss/search?q=%22bland+ai%22+voice+when:7d&hl=en-US&gl=US&ceid=US:en",
+    priority: "high",
+    category: "market-intel",
+    tag: "competitor",
+  },
+  {
+    name: "Google News",
+    slug: "gnews-synthflow",
+    url: "https://news.google.com/rss/search?q=synthflow+voice+ai+when:7d&hl=en-US&gl=US&ceid=US:en",
+    priority: "high",
+    category: "market-intel",
+    tag: "competitor",
+  },
+
+  // ── LEAD SIGNALS (Google News — companies deploying voice AI) ──
+  {
+    name: "Google News",
+    slug: "gnews-voice-deploy",
+    url: "https://news.google.com/rss/search?q=%22voice+ai%22+launches+OR+deploys+OR+adopts+when:7d&hl=en-US&gl=US&ceid=US:en",
+    priority: "high",
+    category: "use-case",
+    tag: "lead",
+  },
+  {
+    name: "Google News",
+    slug: "gnews-ai-receptionist",
+    url: "https://news.google.com/rss/search?q=%22ai+receptionist%22+OR+%22ai+phone+agent%22+OR+%22voice+bot%22+when:7d&hl=en-US&gl=US&ceid=US:en",
+    priority: "high",
+    category: "voice-ai",
+    tag: "lead",
+  },
+  {
+    name: "Google News",
+    slug: "gnews-ccai",
+    url: "https://news.google.com/rss/search?q=%22contact+center%22+ai+automation+voice+when:7d&hl=en-US&gl=US&ceid=US:en",
+    priority: "high",
+    category: "cx",
+    tag: "lead",
+  },
+
+  // ── INDUSTRY NEWS (Google News + curated blogs) ──
+  {
+    name: "Google News",
+    slug: "gnews-voiceai",
+    url: "https://news.google.com/rss/search?q=%22voice+ai%22+agent+OR+platform+when:7d&hl=en-US&gl=US&ceid=US:en",
+    priority: "high",
+    category: "voice-ai",
+    tag: "industry",
+  },
   {
     name: "Voicebot.ai",
     slug: "voicebot",
     url: "https://voicebot.ai/feed/",
     priority: "high",
     category: "voice-ai",
+    tag: "industry",
   },
-  {
-    name: "Kore.ai Blog",
-    slug: "koreai",
-    url: "https://blog.kore.ai/rss.xml",
-    priority: "high",
-    category: "voice-ai",
-  },
-  {
-    name: "Yellow.ai",
-    slug: "yellowai",
-    url: "https://yellow.ai/feed",
-    priority: "high",
-    category: "voice-ai",
-  },
-  // AI News — Medium Priority (keyword-filtered)
   {
     name: "TechCrunch AI",
     slug: "techcrunch",
     url: "https://techcrunch.com/category/artificial-intelligence/feed",
     priority: "medium",
     category: "ai-news",
+    tag: "industry",
   },
   {
     name: "VentureBeat AI",
@@ -187,21 +239,25 @@ export const RSS_SOURCES: RSSSource[] = [
     url: "https://venturebeat.com/category/ai/feed",
     priority: "medium",
     category: "ai-news",
+    tag: "industry",
+  },
+
+  // ── COMMUNITY (Reddit, Hacker News) ──
+  {
+    name: "Reddit",
+    slug: "reddit-voiceai",
+    url: "https://www.reddit.com/search.rss?q=%22voice+ai%22+OR+%22voice+agent%22+OR+vapi+OR+retell+OR+elevenlabs&sort=new&t=week",
+    priority: "medium",
+    category: "voice-ai",
+    tag: "community",
   },
   {
-    name: "MIT Tech Review",
-    slug: "mitreview",
-    url: "https://www.technologyreview.com/feed/",
+    name: "Hacker News",
+    slug: "hn-voiceai",
+    url: "https://hnrss.org/newest?q=%22voice+ai%22+OR+vapi+OR+retell+OR+elevenlabs&count=20",
     priority: "medium",
     category: "ai-news",
-  },
-  // CX & Contact Center
-  {
-    name: "CX Today",
-    slug: "cxtoday",
-    url: "https://cxtoday.com/feed",
-    priority: "medium",
-    category: "cx",
+    tag: "community",
   },
 ];
 
@@ -217,20 +273,7 @@ export const COMPETITOR_NAMES = [
   "vapi",
   "retell",
   "elevenlabs",
+  "eleven labs",
   "bland ai",
   "synthflow",
-];
-
-export const LEAD_KEYWORDS = [
-  "voice ai",
-  "ai voice agent",
-  "voice bot",
-  "ai receptionist",
-  "ai call center",
-  "ai contact center",
-  "ai phone agent",
-  "conversational ai",
-  "ai scheduling",
-  "automated calling",
-  "telephony ai",
 ];

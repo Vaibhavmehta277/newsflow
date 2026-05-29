@@ -14,6 +14,8 @@ export type Section =
   | "blogs"
   | "edits";
 
+export type SourceTag = "competitor" | "lead" | "industry" | "community";
+
 export interface Article {
   id: string;
   title: string;
@@ -25,6 +27,7 @@ export interface Article {
   keywords: string[];
   category: ArticleCategory;
   imageUrl?: string;
+  sourceTag?: SourceTag;
 }
 
 export interface SheetRow {
@@ -46,6 +49,7 @@ export interface RSSSource {
   url: string;
   priority: "high" | "medium";
   category: ArticleCategory;
+  tag: SourceTag;
 }
 
 export interface KeywordGroup {

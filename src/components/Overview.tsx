@@ -7,15 +7,10 @@ import {
   Eye,
   TrendingUp,
   ArrowUpRight,
-  ExternalLink,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import type { Article, SheetRow, Section } from "@/types";
-import {
-  COMPETITOR_NAMES,
-  LEAD_KEYWORDS,
-  CATEGORY_LABELS,
-} from "@/lib/keywords";
+import { COMPETITOR_NAMES } from "@/lib/keywords";
 
 interface OverviewProps {
   articles: Article[];
@@ -93,44 +88,42 @@ export default function Overview({
   onNavigate,
   onSelectArticle,
 }: OverviewProps) {
+  // Use sourceTag for reliable section filtering
   const leadAlerts = useMemo(() => {
-    return articles.filter((a) => {
-      const text = `${a.title} ${a.summary}`.toLowerCase();
-      return LEAD_KEYWORDS.some((kw) => text.includes(kw));
-    });
+    return articles.filter((a) => a.sourceTag === "lead");
   }, [articles]);
 
   const competitorArticles = useMemo(() => {
     return articles.filter((a) => {
+      if (a.sourceTag === "competitor") return true;
       const text = `${a.title} ${a.summary}`.toLowerCase();
       return COMPETITOR_NAMES.some((name) => text.includes(name));
     });
   }, [articles]);
 
-  const todayArticles = useMemo(() => {
-    const today = new Date().toISOString().slice(0, 10);
-    return articles.filter((a) => a.publishedAt.startsWith(today));
-  }, [articles]);
-
   const savedCount = sheetRows.filter(
-    (r) => r.status === "saved" || r.platform === "youtube" || r.platform === "blog"
+    (r) =>
+      r.status === "saved" ||
+      r.platform === "youtube" ||
+      r.platform === "blog"
   ).length;
 
-  // Top stories: recent lead alerts first, then other voice-ai, then everything else
+  // Top stories: prioritize by relevance score
   const topStories = useMemo(() => {
     const scored = articles.map((a) => {
       let score = 0;
-      const text = `${a.title} ${a.summary}`.toLowerCase();
-      if (LEAD_KEYWORDS.some((kw) => text.includes(kw))) score += 10;
-      if (COMPETITOR_NAMES.some((name) => text.includes(name))) score += 8;
+      if (a.sourceTag === "competitor") score += 10;
+      if (a.sourceTag === "lead") score += 8;
       if (a.category === "voice-ai") score += 5;
       if (a.category === "use-case") score += 3;
       if (a.category === "market-intel") score += 3;
+      if (a.sourceTag === "community") score += 2;
       // Recency boost
       const hoursAgo =
         (Date.now() - new Date(a.publishedAt).getTime()) / (1000 * 60 * 60);
-      if (hoursAgo < 24) score += 3;
-      if (hoursAgo < 6) score += 2;
+      if (hoursAgo < 6) score += 5;
+      else if (hoursAgo < 24) score += 3;
+      else if (hoursAgo < 48) score += 1;
       return { article: a, score };
     });
     return scored
@@ -145,15 +138,15 @@ export default function Overview({
       <div>
         <h1 className="text-lg font-semibold text-gray-900">Overview</h1>
         <p className="text-[13px] text-gray-500 mt-0.5">
-          What&apos;s happening across voice AI and your competitive landscape
+          Last 7 days across voice AI, competitors, and market signals
         </p>
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <StatCard
-          label="Articles Today"
-          value={todayArticles.length}
+          label="Total Articles"
+          value={articles.length}
           icon={Newspaper}
           onClick={() => onNavigate("feed")}
         />
@@ -200,7 +193,7 @@ export default function Overview({
           {topStories.length === 0 ? (
             <div className="py-8 text-center">
               <p className="text-[13px] text-gray-500">
-                No articles yet. Feed is loading...
+                No articles yet. Click Refresh to fetch latest data.
               </p>
             </div>
           ) : (
@@ -234,7 +227,7 @@ export default function Overview({
             </div>
             {leadAlerts.length === 0 ? (
               <p className="text-[12px] text-gray-400 py-4 text-center">
-                No lead signals right now
+                No lead signals in the last 3 days
               </p>
             ) : (
               <div className="space-y-2">
@@ -272,14 +265,13 @@ export default function Overview({
             </div>
             {competitorArticles.length === 0 ? (
               <p className="text-[12px] text-gray-400 py-4 text-center">
-                No competitor news right now
+                No competitor news in the last 3 days
               </p>
             ) : (
               <div className="space-y-2">
                 {competitorArticles.slice(0, 3).map((a) => {
                   const titleLower = a.title.toLowerCase();
                   const textLower = `${a.title} ${a.summary}`.toLowerCase();
-                  // Prefer competitor mentioned in title over summary
                   const competitor =
                     COMPETITOR_NAMES.find((n) => titleLower.includes(n)) ||
                     COMPETITOR_NAMES.find((n) => textLower.includes(n)) ||
@@ -290,14 +282,12 @@ export default function Overview({
                       onClick={() => onSelectArticle(a)}
                       className="w-full text-left p-2 rounded-lg hover:bg-gray-50 transition-colors"
                     >
-                      <div className="flex items-center gap-2 mb-1">
-                        {competitor && (
-                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 font-medium capitalize">
-                            {competitor}
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-[12px] text-gray-700 font-medium leading-snug line-clamp-2">
+                      {competitor && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 font-medium capitalize">
+                          {competitor}
+                        </span>
+                      )}
+                      <p className="text-[12px] text-gray-700 font-medium leading-snug line-clamp-2 mt-1">
                         {a.title}
                       </p>
                     </button>

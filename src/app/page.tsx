@@ -10,7 +10,7 @@ import ArticleDetail from "@/components/ArticleDetail";
 import Overview from "@/components/Overview";
 import ContentPipeline from "@/components/ContentPipeline";
 import type { Article, SheetRow, Section } from "@/types";
-import { COMPETITOR_NAMES, LEAD_KEYWORDS } from "@/lib/keywords";
+import { COMPETITOR_NAMES } from "@/lib/keywords";
 
 function SkeletonCard() {
   return (
@@ -29,15 +29,15 @@ function SkeletonCard() {
 const SECTION_TITLES: Record<string, { title: string; subtitle: string }> = {
   feed: {
     title: "Feed",
-    subtitle: "All curated articles relevant to voice AI",
+    subtitle: "All curated articles from the last 7 days",
   },
   "lead-alerts": {
     title: "Lead Alerts",
-    subtitle: "Companies and verticals adopting voice AI",
+    subtitle: "Companies deploying voice AI — potential customers and market signals",
   },
   "competitor-watch": {
     title: "Competitor Watch",
-    subtitle: "What Vapi, Retell, ElevenLabs, Bland AI, and Synthflow are doing",
+    subtitle: "Latest from Vapi, Retell, ElevenLabs, Bland AI, Synthflow — across news, Reddit, blogs",
   },
 };
 
@@ -64,9 +64,6 @@ export default function Home() {
   }, [status, router]);
 
   const fetchArticles = useCallback(async (forceRefresh = false) => {
-    if (forceRefresh) {
-      // Don't set main loading, just show refresh spinner
-    }
     try {
       const params = new URLSearchParams();
       if (forceRefresh) params.set("refresh", "true");
@@ -89,7 +86,6 @@ export default function Home() {
       const data = await res.json();
       setSheetRows(data.rows || []);
     } catch {
-      // Sheets not configured — that's fine, just show empty
       setSheetRows([]);
     } finally {
       setSheetsLoading(false);
@@ -115,22 +111,63 @@ export default function Home() {
     debounceRef.current = setTimeout(() => setSearch(value), 300);
   };
 
-  // Filtered articles for each section
+  // ── Section filtering using sourceTag (not keyword guessing) ──
+
+  // Lead Alerts: articles from "lead" tagged sources
   const leadAlerts = useMemo(() => {
-    return articles.filter((a) => {
-      const text = `${a.title} ${a.summary}`.toLowerCase();
-      return LEAD_KEYWORDS.some((kw) => text.includes(kw));
-    });
+    return articles.filter((a) => a.sourceTag === "lead");
   }, [articles]);
 
+  // Competitor Watch: articles from "competitor" tagged sources
+  // PLUS any article from other sources that mentions a competitor by name
   const competitorArticles = useMemo(() => {
     return articles.filter((a) => {
+      if (a.sourceTag === "competitor") return true;
       const text = `${a.title} ${a.summary}`.toLowerCase();
       return COMPETITOR_NAMES.some((name) => text.includes(name));
     });
   }, [articles]);
 
-  // Get articles for current section
+  // YouTube suggestions: competitor moves, funding, product launches (good for video)
+  const youtubeSuggestions = useMemo(() => {
+    return articles
+      .filter((a) => {
+        const text = `${a.title}`.toLowerCase();
+        return (
+          a.sourceTag === "competitor" ||
+          text.includes("launch") ||
+          text.includes("raises") ||
+          text.includes("funding") ||
+          text.includes("announces") ||
+          text.includes("new") ||
+          text.includes("vs") ||
+          a.sourceTag === "community"
+        );
+      })
+      .slice(0, 10);
+  }, [articles]);
+
+  // Blog suggestions: industry trends, use cases, deep analysis
+  const blogSuggestions = useMemo(() => {
+    return articles
+      .filter((a) => {
+        const text = `${a.title}`.toLowerCase();
+        return (
+          a.sourceTag === "lead" ||
+          a.category === "use-case" ||
+          a.category === "cx" ||
+          text.includes("how") ||
+          text.includes("why") ||
+          text.includes("guide") ||
+          text.includes("trend") ||
+          text.includes("report") ||
+          text.includes("study")
+        );
+      })
+      .slice(0, 10);
+  }, [articles]);
+
+  // Get articles for current feed section
   const sectionArticles = useMemo(() => {
     let result: Article[] = [];
     switch (activeSection) {
@@ -157,7 +194,7 @@ export default function Home() {
     return result;
   }, [articles, leadAlerts, competitorArticles, activeSection, search]);
 
-  // Content pipeline data
+  // Content pipeline data from sheets
   const youtubeRows = useMemo(
     () => sheetRows.filter((r) => r.platform?.toLowerCase() === "youtube"),
     [sheetRows]
@@ -177,11 +214,15 @@ export default function Home() {
       feed: articles.length,
       "lead-alerts": leadAlerts.length,
       "competitor-watch": competitorArticles.length,
-      youtube: youtubeRows.length,
-      blogs: blogRows.length,
+      youtube: youtubeRows.length || youtubeSuggestions.length,
+      blogs: blogRows.length || blogSuggestions.length,
       edits: editRows.length,
     }),
-    [articles, leadAlerts, competitorArticles, youtubeRows, blogRows, editRows]
+    [
+      articles, leadAlerts, competitorArticles,
+      youtubeRows, blogRows, editRows,
+      youtubeSuggestions, blogSuggestions,
+    ]
   );
 
   if (status === "loading") {
@@ -194,13 +235,11 @@ export default function Home() {
 
   if (status === "unauthenticated") return null;
 
-  // Is this a feed section? (shows article list)
   const isFeedSection =
     activeSection === "feed" ||
     activeSection === "lead-alerts" ||
     activeSection === "competitor-watch";
 
-  // Is this a content section?
   const isContentSection =
     activeSection === "youtube" ||
     activeSection === "blogs" ||
@@ -228,11 +267,19 @@ export default function Home() {
           : activeSection === "blogs"
           ? blogRows
           : editRows;
+      const suggestions =
+        activeSection === "youtube"
+          ? youtubeSuggestions
+          : activeSection === "blogs"
+          ? blogSuggestions
+          : [];
       return (
         <ContentPipeline
           rows={rows}
           type={activeSection as "youtube" | "blogs" | "edits"}
-          loading={sheetsLoading}
+          loading={sheetsLoading && loading}
+          suggestions={suggestions}
+          onSelectArticle={setSelectedArticle}
         />
       );
     }
@@ -307,7 +354,7 @@ export default function Home() {
               <p className="text-[13px] text-gray-400">
                 {search
                   ? "Try a different search term"
-                  : "No matching articles in this section right now"}
+                  : "No matching articles in the last 7 days. Try refreshing."}
               </p>
             </div>
           ) : (
