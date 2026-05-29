@@ -333,186 +333,200 @@ async function fetchSource(
   }
 }
 
-// ─── YouTube video fetcher (Google News RSS with site:youtube.com) ──────
+// ─── YouTube Data API v3 ─────────────────────────────────────────────────
 
-const YT_GNEWS_FEEDS = [
-  "https://news.google.com/rss/search?q=%22voice+ai%22+site:youtube.com+when:7d&hl=en-US&gl=US&ceid=US:en",
-  "https://news.google.com/rss/search?q=%22ai+voice+agent%22+site:youtube.com+when:7d&hl=en-US&gl=US&ceid=US:en",
-  "https://news.google.com/rss/search?q=(%22vapi%22+OR+%22retell+ai%22+OR+%22elevenlabs%22+OR+%22synthflow%22)+voice+site:youtube.com+when:7d&hl=en-US&gl=US&ceid=US:en",
-  "https://news.google.com/rss/search?q=%22voice+bot%22+OR+%22ai+receptionist%22+OR+%22ai+phone+agent%22+site:youtube.com+when:7d&hl=en-US&gl=US&ceid=US:en",
+const YT_API_KEY = process.env.YOUTUBE_API_KEY || "";
+const YT_API_BASE = "https://www.googleapis.com/youtube/v3";
+
+const YT_SEARCH_QUERIES = [
+  '"voice ai" OR "voice agent" OR "ai voice agent"',
+  'vapi OR "retell ai" OR elevenlabs OR "bland ai" OR synthflow',
+  '"ai receptionist" OR "voice bot" OR "text to speech" ai',
 ];
 
-function extractVideoId(url: string): string | undefined {
-  const directMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
-  if (directMatch) return directMatch[1];
-  return undefined;
+// Parse ISO 8601 duration (PT1H2M30S) to seconds
+function parseISODuration(iso: string): number {
+  const match = iso.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
+  if (!match) return 0;
+  return (
+    (parseInt(match[1] || "0") * 3600) +
+    (parseInt(match[2] || "0") * 60) +
+    parseInt(match[3] || "0")
+  );
 }
 
-// YouTube channel RSS feeds (direct URLs with video IDs)
-const YT_CHANNEL_FEEDS = [
-  // Liam Ottley — AI agency, voice AI tutorials
-  "https://www.youtube.com/feeds/videos.xml?channel_id=UCMu25OwNthLsq1bLCB-bthQ",
-  // AI Jason — AI agents, voice AI
-  "https://www.youtube.com/feeds/videos.xml?channel_id=UCfAkXr4UpeGkeCPFBVON5Wg",
-  // Matt Wolfe — AI tools
-  "https://www.youtube.com/feeds/videos.xml?channel_id=UCJIfeSCssxSC_Dhc5s7woww",
-  // WorldofAI — voice AI, LLMs
-  "https://www.youtube.com/feeds/videos.xml?channel_id=UCLq-0AN8lmCsbxOmyITnHQQ",
-];
+interface YTSearchItem {
+  id: { videoId: string };
+  snippet: {
+    publishedAt: string;
+    channelTitle: string;
+    title: string;
+    description: string;
+    thumbnails: { medium?: { url: string } };
+  };
+}
 
-async function fetchYTChannelVideos(): Promise<Article[]> {
-  const articles: Article[] = [];
-  const results = await Promise.allSettled(
-    YT_CHANNEL_FEEDS.map(async (feedUrl) => {
-      const res = await fetch(feedUrl, {
-        headers: { "User-Agent": UA },
-        signal: AbortSignal.timeout(8000),
-      });
-      if (!res.ok) throw new Error(`YT channel feed ${res.status}`);
-      return res.text();
-    })
-  );
+interface YTVideoDetail {
+  id: string;
+  statistics?: { viewCount?: string };
+  contentDetails?: { duration?: string };
+}
 
-  for (const result of results) {
-    if (result.status !== "fulfilled") continue;
-    const xml = result.value;
-    const entries = xml.split("<entry>").slice(1, 8);
+async function ytSearch(query: string): Promise<YTSearchItem[]> {
+  const publishedAfter = new Date(
+    Date.now() - MAX_AGE_HOURS * 60 * 60 * 1000
+  ).toISOString();
 
-    for (const entry of entries) {
-      const videoId = entry.match(/<yt:videoId>([^<]+)<\/yt:videoId>/)?.[1]?.trim();
-      const title = decodeEntities(
-        entry.match(/<title>([\s\S]*?)<\/title>/)?.[1]?.trim() || ""
-      );
-      const author = entry.match(/<name>([\s\S]*?)<\/name>/)?.[1]?.trim() || "";
-      const published = entry.match(/<published>([\s\S]*?)<\/published>/)?.[1]?.trim() || "";
-      const description = entry.match(/<media:description>([\s\S]*?)<\/media:description>/)?.[1]?.trim() || "";
+  const params = new URLSearchParams({
+    part: "snippet",
+    q: query,
+    type: "video",
+    order: "date",
+    publishedAfter,
+    maxResults: "20",
+    relevanceLanguage: "en",
+    key: YT_API_KEY,
+  });
 
-      if (!videoId || !title) continue;
+  const res = await fetch(`${YT_API_BASE}/search?${params}`, {
+    signal: AbortSignal.timeout(10000),
+  });
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(`YouTube search ${res.status}: ${body.slice(0, 100)}`);
+  }
+  const data = await res.json();
+  return (data.items || []) as YTSearchItem[];
+}
 
-      const publishedAt = published ? new Date(published).toISOString() : "";
-      if (!publishedAt || !isWithinMaxAge(publishedAt)) continue;
+async function ytVideoDetails(
+  videoIds: string[]
+): Promise<Map<string, YTVideoDetail>> {
+  if (videoIds.length === 0) return new Map();
+
+  // API allows up to 50 IDs per call
+  const params = new URLSearchParams({
+    part: "statistics,contentDetails",
+    id: videoIds.join(","),
+    key: YT_API_KEY,
+  });
+
+  const res = await fetch(`${YT_API_BASE}/videos?${params}`, {
+    signal: AbortSignal.timeout(10000),
+  });
+  if (!res.ok) return new Map();
+  const data = await res.json();
+
+  const map = new Map<string, YTVideoDetail>();
+  for (const item of (data.items || []) as YTVideoDetail[]) {
+    map.set(item.id, item);
+  }
+  return map;
+}
+
+async function fetchYouTubeVideos(): Promise<Article[]> {
+  if (!YT_API_KEY) {
+    console.warn("[YouTube] No YOUTUBE_API_KEY set, skipping");
+    return [];
+  }
+
+  try {
+    // Run all search queries in parallel
+    const searchResults = await Promise.allSettled(
+      YT_SEARCH_QUERIES.map((q) => ytSearch(q))
+    );
+
+    // Collect unique videos
+    const seenIds = new Set<string>();
+    const rawVideos: { item: YTSearchItem; query: string }[] = [];
+
+    for (let i = 0; i < searchResults.length; i++) {
+      const result = searchResults[i];
+      if (result.status !== "fulfilled") {
+        console.warn(
+          `[YouTube] Search query ${i} failed:`,
+          result.reason?.message?.slice(0, 80)
+        );
+        continue;
+      }
+      for (const item of result.value) {
+        if (!item.id?.videoId || seenIds.has(item.id.videoId)) continue;
+        seenIds.add(item.id.videoId);
+        rawVideos.push({ item, query: YT_SEARCH_QUERIES[i] });
+      }
+    }
+
+    if (rawVideos.length === 0) {
+      console.log("[YouTube] 0 videos from API");
+      return [];
+    }
+
+    // Fetch view counts + durations in one batch call
+    const videoIds = rawVideos.map((v) => v.item.id.videoId);
+    const details = await ytVideoDetails(videoIds);
+
+    // Build articles
+    const articles: Article[] = [];
+
+    for (const { item } of rawVideos) {
+      const videoId = item.id.videoId;
+      const title = decodeEntities(item.snippet.title);
+      const description = item.snippet.description || "";
+      const channelTitle = item.snippet.channelTitle || "YouTube";
+      const publishedAt = item.snippet.publishedAt;
+
+      if (!isWithinMaxAge(publishedAt)) continue;
 
       const rawText = `${title} ${description}`;
       if (!isVoiceAIRelevant(rawText)) continue;
       if (isJunkArticle(title, rawText)) continue;
 
-      articles.push({
-        id: uuidv4(),
-        title,
-        source: author,
-        sourceSlug: "youtube-channel",
-        url: `https://www.youtube.com/watch?v=${videoId}`,
-        publishedAt,
-        summary: cleanText(description),
-        keywords: detectKeywords(rawText).keywords.length > 0
-          ? detectKeywords(rawText).keywords
-          : ["voice ai"],
-        category: detectKeywords(rawText).category || "voice-ai",
-        imageUrl: `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg`,
-        sourceTag: "youtube",
-        signalType: "market-news",
-        signalLabel: "YouTube",
-        videoId,
-      });
-    }
-  }
+      // Get stats
+      const detail = details.get(videoId);
+      const viewCount = detail?.statistics?.viewCount
+        ? parseInt(detail.statistics.viewCount)
+        : undefined;
+      const duration = detail?.contentDetails?.duration
+        ? parseISODuration(detail.contentDetails.duration)
+        : undefined;
 
-  return articles;
-}
+      // Skip very short clips (< 30s likely shorts/ads) and very long (> 2hr)
+      if (duration !== undefined && (duration < 30 || duration > 7200)) continue;
 
-async function fetchYouTubeVideos(): Promise<Article[]> {
-  const seenKeys = new Set<string>();
-  const articles: Article[] = [];
-
-  // Fetch from both Google News and YouTube channel RSS in parallel
-  const [gnResults, channelVideos] = await Promise.all([
-    Promise.allSettled(
-      YT_GNEWS_FEEDS.map(async (feedUrl) => {
-        const feed = await parser.parseURL(feedUrl);
-        return feed.items || [];
-      })
-    ),
-    fetchYTChannelVideos().catch(() => [] as Article[]),
-  ]);
-
-  // Add channel videos first (they have video IDs and thumbnails)
-  for (const video of channelVideos) {
-    const key = video.videoId || video.title.toLowerCase().slice(0, 60);
-    if (seenKeys.has(key)) continue;
-    seenKeys.add(key);
-    articles.push(video);
-  }
-
-  // Then add Google News YouTube results
-  for (const result of gnResults) {
-    if (result.status !== "fulfilled") continue;
-    for (const item of result.value) {
-      let title = decodeEntities(item.title?.trim() || "");
-      const rawUrl = item.link?.trim() || "";
-      if (!title || !rawUrl) continue;
-
-      // Strip " - YouTube" from Google News titles
-      title = title.replace(/\s*-\s*YouTube\s*$/, "").trim();
-
-      // Parse Google News title format: "Title - Channel Name"
-      const gnParsed = parseGoogleNewsTitle(title);
-      title = gnParsed.cleanTitle;
-      const channelName = gnParsed.realSource || "YouTube";
-
-      // Try to extract video ID from URL
-      const videoId = extractVideoId(rawUrl);
-
-      // Dedup by video ID or title
-      const dedupeKey = videoId || title.toLowerCase().slice(0, 60);
-      if (seenKeys.has(dedupeKey)) continue;
-      seenKeys.add(dedupeKey);
-
-      // Date filter
-      const publishedAt =
-        item.isoDate || item.pubDate
-          ? new Date(item.isoDate || item.pubDate || "").toISOString()
-          : "";
-      if (!publishedAt || !isWithinMaxAge(publishedAt)) continue;
-
-      // Voice AI relevance check
-      const rawText = `${title} ${item.contentSnippet || ""}`;
-      if (!isVoiceAIRelevant(rawText)) continue;
-      if (isJunkArticle(title, rawText)) continue;
-
-      const summary = cleanText(item.contentSnippet || item.content || "");
+      const summary = cleanText(description);
       const { keywords, category } = detectKeywords(rawText);
 
       articles.push({
         id: uuidv4(),
         title,
-        source: channelName,
+        source: channelTitle,
         sourceSlug: "youtube",
-        url: videoId
-          ? `https://www.youtube.com/watch?v=${videoId}`
-          : rawUrl,
+        url: `https://www.youtube.com/watch?v=${videoId}`,
         publishedAt,
         summary: isSummaryJustTitle(title, summary) ? "" : summary,
         keywords: keywords.length > 0 ? keywords : ["voice ai"],
         category: keywords.length > 0 ? category : "voice-ai",
-        imageUrl: videoId
-          ? `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg`
-          : undefined,
+        imageUrl: `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg`,
         sourceTag: "youtube",
         signalType: "market-news",
         signalLabel: "YouTube",
         videoId,
+        viewCount,
+        duration,
       });
     }
+
+    // Sort by views (most popular first)
+    articles.sort((a, b) => (b.viewCount || 0) - (a.viewCount || 0));
+
+    console.log(
+      `[YouTube] ${articles.length} videos from API (${rawVideos.length} raw, ${seenIds.size} unique)`
+    );
+    return articles.slice(0, 30);
+  } catch (err) {
+    console.warn("[YouTube] API error:", String(err).slice(0, 120));
+    return [];
   }
-
-  // Sort by date (newest first), cap at 30
-  articles.sort(
-    (a, b) =>
-      new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()
-  );
-
-  console.log(`[YouTube] ${articles.length} videos from Google News`);
-  return articles.slice(0, 30);
 }
 
 // ─── Smart dedup: catch "same story, different source" ──────────────────
