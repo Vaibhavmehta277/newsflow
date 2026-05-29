@@ -8,8 +8,7 @@ import Sidebar from "@/components/Sidebar";
 import ArticleCard from "@/components/ArticleCard";
 import ArticleDetail from "@/components/ArticleDetail";
 import Overview from "@/components/Overview";
-import ContentPipeline from "@/components/ContentPipeline";
-import type { Article, SheetRow, Section } from "@/types";
+import type { Article, Section } from "@/types";
 import { COMPETITOR_NAMES } from "@/lib/keywords";
 
 function SkeletonCard() {
@@ -27,24 +26,27 @@ function SkeletonCard() {
 }
 
 const SECTION_TITLES: Record<string, { title: string; subtitle: string }> = {
-  feed: {
-    title: "Feed",
-    subtitle: "All voice AI intelligence from the last 7 days",
+  "pain-points": {
+    title: "Pain Points",
+    subtitle:
+      "Competitor weaknesses, user complaints, and frustrations — your opportunities",
   },
   "lead-alerts": {
     title: "Lead Alerts",
     subtitle:
-      "Companies deploying voice AI — potential customers and market signals",
+      "Companies deploying or looking for voice AI — potential customers",
   },
   "competitor-watch": {
-    title: "Competitor Watch",
-    subtitle:
-      "Vapi, Retell, ElevenLabs, Bland AI, Synthflow — news, launches, and moves",
+    title: "Competitor Intel",
+    subtitle: "What Vapi, Retell, ElevenLabs, Bland AI, Synthflow are doing",
   },
   reddit: {
-    title: "Reddit & Community",
-    subtitle:
-      "Pain points, complaints, comparisons, and discussions from Reddit and Hacker News",
+    title: "Reddit",
+    subtitle: "Voice AI discussions from Reddit and Hacker News",
+  },
+  feed: {
+    title: "All Articles",
+    subtitle: "Industry news and market intelligence from the last 7 days",
   },
 };
 
@@ -54,9 +56,7 @@ export default function Home() {
 
   const [activeSection, setActiveSection] = useState<Section>("overview");
   const [articles, setArticles] = useState<Article[]>([]);
-  const [sheetRows, setSheetRows] = useState<SheetRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [sheetsLoading, setSheetsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState("");
   const [localSearch, setLocalSearch] = useState("");
@@ -86,30 +86,15 @@ export default function Home() {
     }
   }, []);
 
-  const fetchSheets = useCallback(async () => {
-    try {
-      const res = await fetch("/api/sheets");
-      if (!res.ok) throw new Error("Sheets fetch failed");
-      const data = await res.json();
-      setSheetRows(data.rows || []);
-    } catch {
-      setSheetRows([]);
-    } finally {
-      setSheetsLoading(false);
-    }
-  }, []);
-
   useEffect(() => {
     if (status === "authenticated") {
       fetchArticles();
-      fetchSheets();
     }
-  }, [status, fetchArticles, fetchSheets]);
+  }, [status, fetchArticles]);
 
   const handleRefresh = () => {
     setRefreshing(true);
     fetchArticles(true);
-    fetchSheets();
   };
 
   const handleSearchChange = (value: string) => {
@@ -118,82 +103,68 @@ export default function Home() {
     debounceRef.current = setTimeout(() => setSearch(value), 300);
   };
 
-  // ── Section filtering ──
+  // ── EXCLUSIVE section assignment ──
+  // Each article goes to exactly ONE section. Priority order:
+  // 1. Pain Points (signalType === "pain-point")
+  // 2. Competitor Intel (sourceTag === "competitor" OR has competitorName)
+  // 3. Lead Alerts (sourceTag === "lead")
+  // 4. Reddit (sourceTag === "community")
+  // 5. Feed (everything else = industry news)
 
-  // Lead Alerts: articles tagged as lead signals
-  const leadAlerts = useMemo(() => {
-    return articles.filter((a) => a.sourceTag === "lead");
-  }, [articles]);
+  const { painPoints, competitorArticles, leadAlerts, redditArticles, feedArticles } =
+    useMemo(() => {
+      const pain: Article[] = [];
+      const comp: Article[] = [];
+      const leads: Article[] = [];
+      const reddit: Article[] = [];
+      const feed: Article[] = [];
 
-  // Competitor Watch: articles from competitor sources + any mentioning competitors
-  const competitorArticles = useMemo(() => {
-    return articles.filter((a) => {
-      if (a.sourceTag === "competitor") return true;
-      if (a.competitorName) return true;
-      const text = `${a.title} ${a.summary}`.toLowerCase();
-      return COMPETITOR_NAMES.some((name) => text.includes(name));
-    });
-  }, [articles]);
-
-  // Reddit & Community: all community-tagged articles
-  const communityArticles = useMemo(() => {
-    return articles.filter((a) => a.sourceTag === "community");
-  }, [articles]);
-
-  // YouTube suggestions: competitor moves, funding, product launches
-  const youtubeSuggestions = useMemo(() => {
-    return articles
-      .filter((a) => {
-        const text = `${a.title}`.toLowerCase();
-        return (
+      for (const a of articles) {
+        if (a.signalType === "pain-point") {
+          pain.push(a);
+        } else if (
           a.sourceTag === "competitor" ||
-          a.signalType === "competitor-move" ||
-          text.includes("launch") ||
-          text.includes("raises") ||
-          text.includes("funding") ||
-          text.includes("announces") ||
-          text.includes("vs") ||
-          a.signalType === "pain-point"
-        );
-      })
-      .slice(0, 10);
-  }, [articles]);
+          (a.competitorName &&
+            a.sourceTag !== "lead" &&
+            a.sourceTag !== "community")
+        ) {
+          comp.push(a);
+        } else if (a.sourceTag === "lead") {
+          leads.push(a);
+        } else if (a.sourceTag === "community") {
+          reddit.push(a);
+        } else {
+          feed.push(a);
+        }
+      }
 
-  // Blog suggestions: industry trends, use cases, deep analysis
-  const blogSuggestions = useMemo(() => {
-    return articles
-      .filter((a) => {
-        const text = `${a.title}`.toLowerCase();
-        return (
-          a.sourceTag === "lead" ||
-          a.category === "use-case" ||
-          a.category === "cx" ||
-          text.includes("how") ||
-          text.includes("why") ||
-          text.includes("guide") ||
-          text.includes("trend") ||
-          text.includes("report") ||
-          text.includes("study")
-        );
-      })
-      .slice(0, 10);
-  }, [articles]);
+      return {
+        painPoints: pain,
+        competitorArticles: comp,
+        leadAlerts: leads,
+        redditArticles: reddit,
+        feedArticles: feed,
+      };
+    }, [articles]);
 
-  // Get articles for current feed section
+  // Get articles for current section
   const sectionArticles = useMemo(() => {
     let result: Article[] = [];
     switch (activeSection) {
-      case "feed":
-        result = articles;
-        break;
-      case "lead-alerts":
-        result = leadAlerts;
+      case "pain-points":
+        result = painPoints;
         break;
       case "competitor-watch":
         result = competitorArticles;
         break;
+      case "lead-alerts":
+        result = leadAlerts;
+        break;
       case "reddit":
-        result = communityArticles;
+        result = redditArticles;
+        break;
+      case "feed":
+        result = feedArticles;
         break;
       default:
         result = [];
@@ -204,56 +175,30 @@ export default function Home() {
         (a) =>
           a.title.toLowerCase().includes(lower) ||
           a.summary.toLowerCase().includes(lower) ||
-          (a.competitorName || "").toLowerCase().includes(lower) ||
-          (a.signalLabel || "").toLowerCase().includes(lower)
+          (a.competitorName || "").toLowerCase().includes(lower)
       );
     }
     return result;
   }, [
-    articles,
-    leadAlerts,
+    painPoints,
     competitorArticles,
-    communityArticles,
+    leadAlerts,
+    redditArticles,
+    feedArticles,
     activeSection,
     search,
   ]);
 
-  // Content pipeline data from sheets
-  const youtubeRows = useMemo(
-    () => sheetRows.filter((r) => r.platform?.toLowerCase() === "youtube"),
-    [sheetRows]
-  );
-  const blogRows = useMemo(
-    () => sheetRows.filter((r) => r.platform?.toLowerCase() === "blog"),
-    [sheetRows]
-  );
-  const editRows = useMemo(
-    () => sheetRows.filter((r) => r.status === "saved" && !r.platform),
-    [sheetRows]
-  );
-
   // Sidebar counts
   const sidebarCounts = useMemo(
     () => ({
-      feed: articles.length,
+      "pain-points": painPoints.length,
       "lead-alerts": leadAlerts.length,
       "competitor-watch": competitorArticles.length,
-      reddit: communityArticles.length,
-      youtube: youtubeRows.length || youtubeSuggestions.length,
-      blogs: blogRows.length || blogSuggestions.length,
-      edits: editRows.length,
+      reddit: redditArticles.length,
+      feed: feedArticles.length,
     }),
-    [
-      articles,
-      leadAlerts,
-      competitorArticles,
-      communityArticles,
-      youtubeRows,
-      blogRows,
-      editRows,
-      youtubeSuggestions,
-      blogSuggestions,
-    ]
+    [painPoints, leadAlerts, competitorArticles, redditArticles, feedArticles]
   );
 
   if (status === "loading") {
@@ -266,23 +211,17 @@ export default function Home() {
 
   if (status === "unauthenticated") return null;
 
-  const isFeedSection =
-    activeSection === "feed" ||
-    activeSection === "lead-alerts" ||
-    activeSection === "competitor-watch" ||
-    activeSection === "reddit";
-
-  const isContentSection =
-    activeSection === "youtube" ||
-    activeSection === "blogs" ||
-    activeSection === "edits";
+  const isFeedSection = activeSection !== "overview";
 
   const renderContent = () => {
     if (activeSection === "overview") {
       return (
         <Overview
-          articles={articles}
-          sheetRows={sheetRows}
+          painPoints={painPoints}
+          leadAlerts={leadAlerts}
+          competitorArticles={competitorArticles}
+          redditArticles={redditArticles}
+          feedArticles={feedArticles}
           onNavigate={(section) => {
             setActiveSection(section);
             setSelectedArticle(null);
@@ -292,32 +231,8 @@ export default function Home() {
       );
     }
 
-    if (isContentSection) {
-      const rows =
-        activeSection === "youtube"
-          ? youtubeRows
-          : activeSection === "blogs"
-            ? blogRows
-            : editRows;
-      const suggestions =
-        activeSection === "youtube"
-          ? youtubeSuggestions
-          : activeSection === "blogs"
-            ? blogSuggestions
-            : [];
-      return (
-        <ContentPipeline
-          rows={rows}
-          type={activeSection as "youtube" | "blogs" | "edits"}
-          loading={sheetsLoading && loading}
-          suggestions={suggestions}
-          onSelectArticle={setSelectedArticle}
-        />
-      );
-    }
-
-    // Feed sections
-    const sectionInfo = SECTION_TITLES[activeSection] || SECTION_TITLES.feed;
+    const sectionInfo =
+      SECTION_TITLES[activeSection] || SECTION_TITLES.feed;
 
     return (
       <div className="flex-1 flex flex-col min-h-0">
@@ -355,7 +270,7 @@ export default function Home() {
           </div>
 
           <span className="text-[12px] text-gray-400 tabular-nums shrink-0">
-            {sectionArticles.length} articles
+            {sectionArticles.length}
           </span>
 
           <button
@@ -386,7 +301,7 @@ export default function Home() {
               <p className="text-[13px] text-gray-400">
                 {search
                   ? "Try a different search term"
-                  : "No matching articles in the last 7 days. Try refreshing."}
+                  : "Nothing in this section right now. Try refreshing."}
               </p>
             </div>
           ) : (
@@ -424,7 +339,7 @@ export default function Home() {
       />
 
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        {activeSection === "overview" || isContentSection ? (
+        {activeSection === "overview" ? (
           <div className="flex-1 overflow-y-auto bg-gray-50/50">
             {renderContent()}
           </div>
@@ -437,7 +352,6 @@ export default function Home() {
         <ArticleDetail
           article={selectedArticle}
           onClose={() => setSelectedArticle(null)}
-          onSaved={() => fetchSheets()}
         />
       )}
     </div>

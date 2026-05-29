@@ -1,7 +1,7 @@
 "use client";
 
 import { formatDistanceToNow } from "date-fns";
-import { ExternalLink, ArrowRight } from "lucide-react";
+import { ExternalLink, ArrowUp, MessageSquare } from "lucide-react";
 import type { Article, SignalType } from "@/types";
 
 interface ArticleCardProps {
@@ -15,29 +15,29 @@ const SIGNAL_STYLES: Record<
   { bg: string; text: string; label: string }
 > = {
   "pain-point": {
-    bg: "bg-red-50 border-red-100",
+    bg: "bg-red-50 border-red-200",
     text: "text-red-700",
-    label: "Pain Point",
+    label: "PAIN POINT",
   },
   "competitor-move": {
-    bg: "bg-purple-50 border-purple-100",
+    bg: "bg-purple-50 border-purple-200",
     text: "text-purple-700",
-    label: "Competitor",
+    label: "COMPETITOR",
   },
   "lead-signal": {
-    bg: "bg-emerald-50 border-emerald-100",
+    bg: "bg-emerald-50 border-emerald-200",
     text: "text-emerald-700",
-    label: "Lead Signal",
+    label: "LEAD",
   },
   "market-news": {
-    bg: "bg-blue-50 border-blue-100",
+    bg: "bg-blue-50 border-blue-200",
     text: "text-blue-700",
-    label: "Market",
+    label: "MARKET",
   },
   community: {
-    bg: "bg-amber-50 border-amber-100",
-    text: "text-amber-700",
-    label: "Community",
+    bg: "bg-gray-50 border-gray-200",
+    text: "text-gray-600",
+    label: "COMMUNITY",
   },
 };
 
@@ -54,6 +54,9 @@ export default function ArticleCard({
     ? SIGNAL_STYLES[article.signalType]
     : SIGNAL_STYLES["market-news"];
 
+  const isReddit =
+    article.redditScore !== undefined || article.subreddit !== undefined;
+
   return (
     <div
       onClick={onClick}
@@ -63,10 +66,10 @@ export default function ArticleCard({
           : "bg-white border-gray-200 hover:border-gray-300 hover:shadow-sm"
       }`}
     >
-      {/* Top row: signal badge + competitor name + source + time */}
-      <div className="flex items-center gap-2 mb-2 flex-wrap">
+      {/* Top row */}
+      <div className="flex items-center gap-1.5 mb-2 flex-wrap">
         <span
-          className={`text-[10px] px-1.5 py-0.5 rounded border font-semibold uppercase tracking-wide ${signal.bg} ${signal.text}`}
+          className={`text-[9px] px-1.5 py-0.5 rounded border font-bold tracking-wider ${signal.bg} ${signal.text}`}
         >
           {signal.label}
         </span>
@@ -76,52 +79,52 @@ export default function ArticleCard({
           </span>
         )}
         <div className="flex-1" />
-        <span className="text-[11px] text-gray-400">
-          {article.source}
-        </span>
-        <span className="text-[11px] text-gray-300">&middot;</span>
+        <span className="text-[11px] text-gray-400">{article.source}</span>
+        <span className="text-[11px] text-gray-300">|</span>
         <span className="text-[11px] text-gray-400">{timeAgo}</span>
       </div>
 
       {/* Title */}
-      <h3 className="text-[14px] font-semibold leading-snug text-gray-900 mb-1 group-hover:text-black transition-colors">
+      <h3 className="text-[14px] font-semibold leading-snug text-gray-900 mb-1 group-hover:text-black">
         {article.title}
       </h3>
 
-      {/* Signal label — why this matters */}
-      {article.signalLabel && (
-        <p className="text-[12px] text-gray-500 mb-1.5 font-medium">
-          {article.signalLabel}
-        </p>
-      )}
-
-      {/* Summary */}
-      {article.summary && (
-        <p className="text-[12px] text-gray-400 leading-relaxed line-clamp-2">
+      {/* Summary — only show if it adds value beyond the title */}
+      {article.summary && article.summary.length > 20 && (
+        <p className="text-[12px] text-gray-400 leading-relaxed line-clamp-2 mb-2">
           {article.summary}
         </p>
       )}
 
-      {/* Footer */}
-      <div className="flex items-center justify-end pt-2 mt-2 border-t border-gray-100">
-        <div className="flex items-center gap-2 shrink-0">
-          <a
-            href={article.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={(e) => e.stopPropagation()}
-            className="text-gray-300 hover:text-gray-500 transition-colors"
-          >
-            <ExternalLink className="w-3.5 h-3.5" />
-          </a>
-          <ArrowRight
-            className={`w-3.5 h-3.5 transition-all ${
-              isSelected
-                ? "text-gray-900 translate-x-0.5"
-                : "text-gray-300 group-hover:text-gray-400"
-            }`}
-          />
+      {/* Reddit engagement stats */}
+      {isReddit && (
+        <div className="flex items-center gap-3 mt-1.5">
+          {article.redditScore !== undefined && (
+            <span className="flex items-center gap-1 text-[11px] text-gray-400">
+              <ArrowUp className="w-3 h-3" />
+              {article.redditScore}
+            </span>
+          )}
+          {article.redditComments !== undefined && (
+            <span className="flex items-center gap-1 text-[11px] text-gray-400">
+              <MessageSquare className="w-3 h-3" />
+              {article.redditComments}
+            </span>
+          )}
         </div>
+      )}
+
+      {/* Footer */}
+      <div className="flex items-center justify-end pt-2 mt-1 border-t border-gray-100">
+        <a
+          href={article.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={(e) => e.stopPropagation()}
+          className="text-gray-300 hover:text-gray-500 transition-colors"
+        >
+          <ExternalLink className="w-3.5 h-3.5" />
+        </a>
       </div>
     </div>
   );

@@ -7,13 +7,11 @@ export type ArticleCategory =
 
 export type Section =
   | "overview"
-  | "feed"
+  | "pain-points"
   | "lead-alerts"
   | "competitor-watch"
   | "reddit"
-  | "youtube"
-  | "blogs"
-  | "edits";
+  | "feed";
 
 export type SourceTag = "competitor" | "lead" | "industry" | "community";
 
@@ -37,8 +35,11 @@ export interface Article {
   imageUrl?: string;
   sourceTag?: SourceTag;
   signalType?: SignalType;
-  signalLabel?: string; // e.g. "ElevenLabs", "Vapi", "Customer Complaint"
-  competitorName?: string; // which competitor this is about
+  signalLabel?: string;
+  competitorName?: string;
+  redditScore?: number;
+  redditComments?: number;
+  subreddit?: string;
 }
 
 export interface SheetRow {

@@ -1,6 +1,6 @@
 import Parser from "rss-parser";
 import { v4 as uuidv4 } from "uuid";
-import type { Article, SourceTag } from "@/types";
+import type { Article } from "@/types";
 import {
   RSS_SOURCES,
   detectKeywords,
@@ -29,47 +29,7 @@ const parser = new Parser({
   },
 });
 
-// Reddit blocks rss-parser but accepts native fetch. Parse Atom XML manually.
-interface RedditEntry {
-  title: string;
-  link: string;
-  published: string;
-  content: string;
-}
-
-async function fetchRedditRSS(url: string): Promise<RedditEntry[]> {
-  const res = await fetch(url, {
-    headers: {
-      "User-Agent": UA,
-      Accept: "text/xml, application/xml, application/atom+xml, */*",
-    },
-    signal: AbortSignal.timeout(10000),
-  });
-  if (!res.ok) throw new Error(`Reddit returned ${res.status}`);
-  const xml = await res.text();
-
-  const entries: RedditEntry[] = [];
-  const entryBlocks = xml.split("<entry>");
-  for (let i = 1; i < entryBlocks.length && i <= 15; i++) {
-    const block = entryBlocks[i];
-    const title = block.match(/<title>([\s\S]*?)<\/title>/)?.[1]?.trim() || "";
-    const link =
-      block.match(/<link\s+href="([^"]+)"/)?.[1]?.trim() || "";
-    const published =
-      block.match(/<published>([\s\S]*?)<\/published>/)?.[1]?.trim() ||
-      block.match(/<updated>([\s\S]*?)<\/updated>/)?.[1]?.trim() ||
-      "";
-    const content =
-      block.match(/<content[^>]*>([\s\S]*?)<\/content>/)?.[1]?.trim() || "";
-    if (title && link) {
-      entries.push({ title, link, published, content });
-    }
-  }
-  return entries;
-}
-
-// Only show articles from the last 7 days
-const MAX_AGE_HOURS = 168;
+const MAX_AGE_HOURS = 168; // 7 days
 
 interface ParsedItem {
   title?: string;
@@ -94,39 +54,54 @@ function extractImage(item: ParsedItem): string | undefined {
   );
 }
 
-function cleanSummary(text: string): string {
+// Decode HTML entities (used for both titles and content)
+function decodeEntities(text: string): string {
   return text
-    .replace(/<[^>]*>/g, "")
     .replace(/&amp;/g, "&")
     .replace(/&lt;/g, "<")
     .replace(/&gt;/g, ">")
     .replace(/&quot;/g, '"')
     .replace(/&#39;/g, "'")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&#32;/g, " ")
+    .replace(/&#x200B;/g, ""); // zero-width space
+}
+
+// Thorough HTML + entity cleanup for summaries/content
+function cleanText(text: string): string {
+  // Decode entities FIRST so encoded HTML like &lt;div&gt; becomes <div> for tag stripping
+  return decodeEntities(text)
+    .replace(/<!--[\s\S]*?-->/g, "") // HTML comments
+    .replace(/<[^>]*>/g, "") // HTML tags
+    .replace(
+      /[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F1E0}-\u{1F1FF}\u{2702}-\u{27B0}\u{24C2}-\u{1F251}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu,
+      ""
+    ) // strip emojis
     .replace(/\s+/g, " ")
     .trim()
     .slice(0, 300);
 }
 
-// Google News titles often have " - Source Name" appended. Extract the real source.
+// Google News titles: "Article Title - Source Name" — strip source, keep title
 function parseGoogleNewsTitle(title: string): {
   cleanTitle: string;
   realSource: string;
 } {
-  const match = title.match(/^(.+)\s-\s([^-]+)$/);
+  // Match the LAST " - " followed by a short source name (greedy .+ takes everything up to last match)
+  const match = title.match(/^(.+)\s-\s(.{2,50})$/);
   if (match) {
     return { cleanTitle: match[1].trim(), realSource: match[2].trim() };
   }
   return { cleanTitle: title, realSource: "" };
 }
 
-// Check if the summary is just the title repeated (common Google News issue)
 function isSummaryJustTitle(title: string, summary: string): boolean {
   if (!summary) return true;
   const cleanTitle = title.toLowerCase().replace(/[^a-z0-9]/g, "");
   const cleanSummaryText = summary.toLowerCase().replace(/[^a-z0-9]/g, "");
-  // If the summary starts with 80% of the title, it's likely just a repeat
-  return (
-    cleanSummaryText.startsWith(cleanTitle.slice(0, cleanTitle.length * 0.8))
+  if (cleanTitle.length < 10) return false;
+  return cleanSummaryText.startsWith(
+    cleanTitle.slice(0, Math.floor(cleanTitle.length * 0.7))
   );
 }
 
@@ -137,7 +112,7 @@ function isWithinMaxAge(dateStr: string): boolean {
   return articleDate.getTime() > cutoff;
 }
 
-// Voice AI relevance check — at least one of these must appear for non-high-priority sources
+// Voice AI relevance check
 const VOICE_AI_RELEVANCE = [
   "voice ai",
   "voice agent",
@@ -145,7 +120,6 @@ const VOICE_AI_RELEVANCE = [
   "voice bot",
   "voicebot",
   "text to speech",
-  "tts ",
   "speech synthesis",
   "voice cloning",
   "ai receptionist",
@@ -154,7 +128,6 @@ const VOICE_AI_RELEVANCE = [
   "contact center ai",
   "conversational ai",
   "telephony",
-  "ivr",
   "vapi",
   "retell ai",
   "elevenlabs",
@@ -170,38 +143,134 @@ function isVoiceAIRelevant(text: string): boolean {
   return VOICE_AI_RELEVANCE.some((term) => lower.includes(term));
 }
 
+// ─── Reddit Atom XML fetcher (native fetch — rss-parser and JSON API both get 403) ──
+
+async function fetchRedditSource(
+  source: (typeof RSS_SOURCES)[0]
+): Promise<Article[]> {
+  try {
+    const res = await fetch(source.url, {
+      headers: {
+        "User-Agent": UA,
+        Accept: "text/xml, application/xml, application/atom+xml, */*",
+        "Accept-Language": "en-US,en;q=0.9",
+      },
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!res.ok) throw new Error(`Reddit returned ${res.status}`);
+    const xml = await res.text();
+
+    const articles: Article[] = [];
+    const entryBlocks = xml.split("<entry>").slice(1, 20);
+
+    for (const block of entryBlocks) {
+      const title = decodeEntities(
+        block.match(/<title>([\s\S]*?)<\/title>/)?.[1]?.trim() || ""
+      );
+      const link =
+        block.match(/<link\s+href="([^"]+)"/)?.[1]?.trim() || "";
+      const updated =
+        block.match(/<updated>([\s\S]*?)<\/updated>/)?.[1]?.trim() || "";
+      const rawContent =
+        block.match(/<content[^>]*>([\s\S]*?)<\/content>/)?.[1]?.trim() || "";
+
+      if (!title || !link) continue;
+
+      // Skip subreddit entries (links to subreddits, not posts)
+      if (link.match(/\/r\/[^/]+\/?$/) && !link.includes("/comments/"))
+        continue;
+
+      // Date filter
+      const publishedAt = updated ? new Date(updated).toISOString() : "";
+      if (!publishedAt || !isWithinMaxAge(publishedAt)) continue;
+
+      // Junk filter
+      if (isJunkArticle(title, rawContent)) continue;
+      const titleLower = title.toLowerCase();
+      if (
+        titleLower.includes("hiring") ||
+        titleLower.includes("resume") ||
+        titleLower.includes("stolen") ||
+        titleLower.includes("meme")
+      )
+        continue;
+
+      // Clean the HTML content thoroughly
+      const summary = cleanText(rawContent);
+      const rawText = `${title} ${summary}`;
+
+      // Must be voice AI relevant
+      if (!isVoiceAIRelevant(rawText)) continue;
+
+      // Extract subreddit from URL
+      const subreddit = link.match(/\/r\/([^/]+)/)?.[1] || "";
+
+      const { keywords, category } = detectKeywords(rawText);
+      const signal = detectSignalType(title, summary, source.tag);
+
+      articles.push({
+        id: uuidv4(),
+        title,
+        source: subreddit ? `r/${subreddit}` : "Reddit",
+        sourceSlug: source.slug,
+        url: link,
+        publishedAt,
+        summary:
+          summary.startsWith("submitted by") ||
+          summary.startsWith("[link]") ||
+          summary.length < 20
+            ? ""
+            : summary,
+        keywords:
+          keywords.length > 0
+            ? keywords
+            : [source.category.replace("-", " ")],
+        category: keywords.length > 0 ? category : source.category,
+        sourceTag: source.tag,
+        signalType: signal.signalType,
+        signalLabel: signal.signalLabel,
+        competitorName: signal.competitorName,
+        subreddit,
+      });
+    }
+
+    return articles;
+  } catch (err) {
+    console.warn(
+      `Failed to fetch ${source.name} (${source.slug}):`,
+      String(err).slice(0, 100)
+    );
+    return [];
+  }
+}
+
+// ─── Standard RSS fetch ──────────────────────────────────────────────────
+
 async function fetchSource(
   source: (typeof RSS_SOURCES)[0]
 ): Promise<Article[]> {
   try {
-    const isGoogleNews = source.slug.startsWith("gnews-");
-    const isReddit = source.slug.startsWith("reddit-");
-
-    // Use native fetch for Reddit (rss-parser gets 403'd)
-    if (isReddit) {
+    // Reddit uses JSON API instead
+    if (source.slug.startsWith("reddit-")) {
       return await fetchRedditSource(source);
     }
 
     const feed = await parser.parseURL(source.url);
     const articles: Article[] = [];
+    const isGoogleNews = source.slug.startsWith("gnews-");
 
     for (const item of (feed.items || []).slice(0, 15)) {
-      let title = item.title?.trim() || "";
+      let title = decodeEntities(item.title?.trim() || "");
       const url = item.link?.trim() || "";
       if (!title || !url) continue;
 
-      // Parse publish date
       const publishedAt =
         item.isoDate || item.pubDate
           ? new Date(item.isoDate || item.pubDate || "").toISOString()
           : "";
 
-      // FRESHNESS FILTER: Skip articles older than 7 days
-      if (!publishedAt || !isWithinMaxAge(publishedAt)) {
-        continue;
-      }
+      if (!publishedAt || !isWithinMaxAge(publishedAt)) continue;
 
-      // Handle Google News title format: "Article Title - Source Name"
       let sourceName = source.name;
       if (isGoogleNews) {
         const parsed = parseGoogleNewsTitle(title);
@@ -211,29 +280,21 @@ async function fetchSource(
         }
       }
 
-      // JUNK FILTER: Skip irrelevant articles
-      const rawText = `${title} ${item.contentSnippet || item.summary || ""}`;
-      if (isJunkArticle(title, rawText)) {
-        continue;
-      }
+      const rawSummary =
+        item.contentSnippet || item.summary || item.content || "";
+      const rawText = `${title} ${rawSummary}`;
+
+      if (isJunkArticle(title, rawText)) continue;
 
       const { keywords, category } = detectKeywords(rawText);
 
-      // Medium-priority sources MUST match at least one keyword to avoid junk
-      if (source.priority === "medium" && keywords.length === 0) {
-        continue;
-      }
+      if (source.priority === "medium" && keywords.length === 0) continue;
 
-      let summary = cleanSummary(
-        item.contentSnippet || item.summary || item.content || ""
-      );
-
-      // If summary is just repeating the title, clear it
+      let summary = cleanText(rawSummary);
       if (isSummaryJustTitle(title, summary)) {
         summary = "";
       }
 
-      // Detect signal type and competitor
       const competitorFromSlug = detectCompetitorFromSlug(source.slug);
       const signal = detectSignalType(title, summary, source.tag);
 
@@ -268,92 +329,72 @@ async function fetchSource(
   }
 }
 
-// Separate Reddit fetcher using native fetch (rss-parser gets blocked)
-async function fetchRedditSource(
-  source: (typeof RSS_SOURCES)[0]
-): Promise<Article[]> {
-  try {
-    const entries = await fetchRedditRSS(source.url);
-    const articles: Article[] = [];
+// ─── Smart dedup: catch "same story, different source" ──────────────────
 
-    for (const entry of entries) {
-      const title = entry.title?.trim() || "";
-      const url = entry.link?.trim() || "";
-      if (!title || !url) continue;
+const STOP_WORDS = new Set([
+  "the",
+  "a",
+  "an",
+  "and",
+  "or",
+  "but",
+  "in",
+  "on",
+  "at",
+  "to",
+  "for",
+  "of",
+  "with",
+  "by",
+  "from",
+  "is",
+  "are",
+  "was",
+  "were",
+  "be",
+  "been",
+  "has",
+  "have",
+  "had",
+  "it",
+  "its",
+  "this",
+  "that",
+  "as",
+  "how",
+  "new",
+  "s",
+]);
 
-      // Parse date
-      const publishedAt = entry.published
-        ? new Date(entry.published).toISOString()
-        : "";
-      if (!publishedAt || !isWithinMaxAge(publishedAt)) continue;
-
-      // Junk filter
-      if (isJunkArticle(title, entry.content || "")) continue;
-
-      const titleLower = title.toLowerCase();
-      if (
-        titleLower.includes("job") ||
-        titleLower.includes("hiring") ||
-        titleLower.includes("resume") ||
-        titleLower.includes("stolen") ||
-        titleLower.includes("meme") ||
-        titleLower.includes("psychiatrist") ||
-        titleLower.includes("therapist") ||
-        titleLower.includes("horoscope")
-      )
-        continue;
-
-      // Clean Reddit HTML content for summary
-      const rawContent = cleanSummary(entry.content || "");
-      const rawText = `${title} ${rawContent}`;
-
-      // Must be voice AI relevant
-      if (!isVoiceAIRelevant(rawText)) continue;
-
-      let summary = rawContent;
-      if (summary.startsWith("submitted by") || summary.startsWith("&#32;")) {
-        summary = "";
-      }
-      if (isSummaryJustTitle(title, summary)) {
-        summary = "";
-      }
-
-      const { keywords, category } = detectKeywords(rawText);
-      const signal = detectSignalType(title, summary, source.tag);
-
-      articles.push({
-        id: uuidv4(),
-        title,
-        source: "Reddit",
-        sourceSlug: source.slug,
-        url,
-        publishedAt,
-        summary,
-        keywords:
-          keywords.length > 0
-            ? keywords
-            : [source.category.replace("-", " ")],
-        category: keywords.length > 0 ? category : source.category,
-        sourceTag: source.tag,
-        signalType: signal.signalType,
-        signalLabel: signal.signalLabel,
-        competitorName: signal.competitorName,
-      });
-    }
-
-    return articles;
-  } catch (err) {
-    console.warn(
-      `Failed to fetch ${source.name} (${source.slug}):`,
-      String(err).slice(0, 100)
-    );
-    return [];
-  }
+function getSignificantWords(title: string): Set<string> {
+  return new Set(
+    title
+      .toLowerCase()
+      .replace(/'s\b/g, "") // strip possessives before normalization
+      .replace(/[^a-z0-9\s]/g, "")
+      .split(/\s+/)
+      .filter((w) => w.length > 2 && !STOP_WORDS.has(w))
+  );
 }
+
+function isSameStory(title1: string, title2: string): boolean {
+  const words1 = getSignificantWords(title1);
+  const words2 = getSignificantWords(title2);
+  if (words1.size < 3 || words2.size < 3) return false;
+
+  let overlap = 0;
+  for (const w of words1) {
+    if (words2.has(w)) overlap++;
+  }
+  const minSize = Math.min(words1.size, words2.size);
+  return overlap / minSize >= 0.6; // 60% word overlap = same story
+}
+
+// ─── Main fetch ──────────────────────────────────────────────────────────
 
 let cachedArticles: Article[] = [];
 let lastFetchTime = 0;
-const CACHE_TTL = 10 * 60 * 1000; // 10 min cache
+const CACHE_TTL = 10 * 60 * 1000;
 
 export async function fetchAllFeeds(forceRefresh = false): Promise<Article[]> {
   const now = Date.now();
@@ -386,51 +427,36 @@ export async function fetchAllFeeds(forceRefresh = false): Promise<Article[]> {
       new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()
   );
 
-  // Deduplicate by URL and similar titles
-  const seen = new Set<string>();
-  const deduped = allArticles.filter((a) => {
-    // Normalize URL for dedup (strip trailing slashes, query params for Google News redirects)
-    const normalizedUrl = a.url.split("?")[0].replace(/\/+$/, "");
-    if (seen.has(normalizedUrl)) return false;
+  // Smart dedup: URL + title similarity
+  const kept: Article[] = [];
+  const seenUrls = new Set<string>();
 
-    // Deduplicate by similar titles (normalized to lowercase alphanumeric first 40 chars)
-    const titleKey = a.title
-      .toLowerCase()
-      .replace(/[^a-z0-9]/g, "")
-      .slice(0, 40);
-    if (seen.has(titleKey)) return false;
+  for (const article of allArticles) {
+    const normalizedUrl = article.url.split("?")[0].replace(/\/+$/, "");
+    if (seenUrls.has(normalizedUrl)) continue;
 
-    seen.add(normalizedUrl);
-    seen.add(titleKey);
-    return true;
-  });
+    // Check if this is the same story as any already-kept article
+    const isDuplicate = kept.some((k) => isSameStory(k.title, article.title));
+    if (isDuplicate) continue;
 
-  cachedArticles = deduped;
+    seenUrls.add(normalizedUrl);
+    kept.push(article);
+  }
+
+  cachedArticles = kept;
   lastFetchTime = now;
 
-  const tagBreakdown = deduped.reduce(
+  const tagBreakdown = kept.reduce(
     (acc, a) => {
-      const tag = a.sourceTag || "unknown";
-      acc[tag] = (acc[tag] || 0) + 1;
-      return acc;
-    },
-    {} as Record<string, number>
-  );
-
-  const signalBreakdown = deduped.reduce(
-    (acc, a) => {
-      const signal = a.signalType || "unknown";
-      acc[signal] = (acc[signal] || 0) + 1;
+      acc[a.sourceTag || "unknown"] = (acc[a.sourceTag || "unknown"] || 0) + 1;
       return acc;
     },
     {} as Record<string, number>
   );
 
   console.log(
-    `[NewsFlow] Fetched ${deduped.length} articles (${allArticles.length} before dedup) from ${RSS_SOURCES.length} sources`
+    `[NewsFlow] ${kept.length} articles (${allArticles.length} before dedup) from ${RSS_SOURCES.length} sources | ${JSON.stringify(tagBreakdown)}`
   );
-  console.log(`[NewsFlow] By tag:`, tagBreakdown);
-  console.log(`[NewsFlow] By signal:`, signalBreakdown);
 
-  return deduped;
+  return kept;
 }

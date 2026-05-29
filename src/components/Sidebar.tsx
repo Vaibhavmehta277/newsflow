@@ -6,10 +6,8 @@ import {
   Newspaper,
   Zap,
   Eye,
+  AlertTriangle,
   MessageCircle,
-  Play,
-  PenLine,
-  FileEdit,
   LogOut,
 } from "lucide-react";
 import type { Section } from "@/types";
@@ -20,24 +18,18 @@ interface SidebarProps {
   counts?: Partial<Record<Section, number>>;
 }
 
-const MONITOR_ITEMS: {
+const SECTIONS: {
   section: Section;
   label: string;
   icon: typeof LayoutGrid;
 }[] = [
   { section: "overview", label: "Overview", icon: LayoutGrid },
-  { section: "feed", label: "Feed", icon: Newspaper },
+  { section: "pain-points", label: "Pain Points", icon: AlertTriangle },
   { section: "lead-alerts", label: "Lead Alerts", icon: Zap },
-  { section: "competitor-watch", label: "Competitor Watch", icon: Eye },
-  { section: "reddit", label: "Reddit & Community", icon: MessageCircle },
+  { section: "competitor-watch", label: "Competitor Intel", icon: Eye },
+  { section: "reddit", label: "Reddit", icon: MessageCircle },
+  { section: "feed", label: "All Articles", icon: Newspaper },
 ];
-
-const CONTENT_ITEMS: { section: Section; label: string; icon: typeof Play }[] =
-  [
-    { section: "youtube", label: "YouTube", icon: Play },
-    { section: "blogs", label: "Blogs", icon: PenLine },
-    { section: "edits", label: "Edits", icon: FileEdit },
-  ];
 
 export default function Sidebar({
   activeSection,
@@ -48,7 +40,6 @@ export default function Sidebar({
 
   return (
     <aside className="w-52 shrink-0 h-screen sticky top-0 flex flex-col border-r border-gray-200 bg-white">
-      {/* Logo */}
       <div className="flex items-center px-5 h-14 border-b border-gray-100">
         <span className="text-[15px] font-semibold text-gray-900 tracking-tight">
           NewsFlow
@@ -56,48 +47,8 @@ export default function Sidebar({
       </div>
 
       <nav className="flex-1 px-3 py-4 overflow-y-auto">
-        {/* Monitor section */}
-        <p className="px-2.5 mb-2 text-[10px] font-semibold text-gray-400 uppercase tracking-widest">
-          Intelligence
-        </p>
-        <div className="space-y-0.5 mb-6">
-          {MONITOR_ITEMS.map(({ section, label, icon: Icon }) => {
-            const isActive = activeSection === section;
-            const count = counts[section];
-            return (
-              <button
-                key={section}
-                onClick={() => onSectionChange(section)}
-                className={`w-full flex items-center justify-between px-2.5 py-[7px] rounded-lg text-[13px] transition-colors ${
-                  isActive
-                    ? "bg-gray-900 text-white font-medium"
-                    : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
-                }`}
-              >
-                <span className="flex items-center gap-2.5">
-                  <Icon className="w-[15px] h-[15px]" />
-                  {label}
-                </span>
-                {count !== undefined && count > 0 && (
-                  <span
-                    className={`text-[11px] tabular-nums ${
-                      isActive ? "text-gray-400" : "text-gray-400"
-                    }`}
-                  >
-                    {count}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Content section */}
-        <p className="px-2.5 mb-2 text-[10px] font-semibold text-gray-400 uppercase tracking-widest">
-          Content
-        </p>
         <div className="space-y-0.5">
-          {CONTENT_ITEMS.map(({ section, label, icon: Icon }) => {
+          {SECTIONS.map(({ section, label, icon: Icon }) => {
             const isActive = activeSection === section;
             const count = counts[section];
             return (
@@ -129,7 +80,6 @@ export default function Sidebar({
         </div>
       </nav>
 
-      {/* User */}
       {session?.user && (
         <div className="px-3 py-3 border-t border-gray-100">
           <div className="flex items-center gap-2.5 px-2">
