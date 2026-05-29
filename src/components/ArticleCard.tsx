@@ -1,7 +1,7 @@
 "use client";
 
 import { formatDistanceToNow } from "date-fns";
-import { ExternalLink, ArrowUp, MessageSquare } from "lucide-react";
+import { ExternalLink, ArrowUp, MessageSquare, Eye, Clock, Play } from "lucide-react";
 import type { Article, SignalType } from "@/types";
 
 interface ArticleCardProps {
@@ -56,6 +56,19 @@ export default function ArticleCard({
 
   const isReddit =
     article.redditScore !== undefined || article.subreddit !== undefined;
+  const isYouTube = !!article.videoId;
+
+  const formatDuration = (s: number) => {
+    const m = Math.floor(s / 60);
+    const sec = s % 60;
+    return `${m}:${sec.toString().padStart(2, "0")}`;
+  };
+
+  const formatViews = (n: number) => {
+    if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+    if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
+    return String(n);
+  };
 
   return (
     <div
@@ -66,13 +79,41 @@ export default function ArticleCard({
           : "bg-white border-gray-200 hover:border-gray-300 hover:shadow-sm"
       }`}
     >
+      {/* YouTube thumbnail */}
+      {isYouTube && article.videoId && (
+        <div className="relative rounded-lg overflow-hidden mb-3">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={`https://i.ytimg.com/vi/${article.videoId}/mqdefault.jpg`}
+            alt=""
+            className="w-full aspect-video object-cover"
+          />
+          <div className="absolute inset-0 bg-black/10 flex items-center justify-center group-hover:bg-black/20 transition-colors">
+            <div className="w-10 h-10 rounded-full bg-red-600/90 flex items-center justify-center">
+              <Play className="w-4 h-4 text-white fill-white ml-0.5" />
+            </div>
+          </div>
+          {article.duration !== undefined && (
+            <span className="absolute bottom-1.5 right-1.5 text-[10px] bg-black/80 text-white px-1.5 py-0.5 rounded font-medium">
+              {formatDuration(article.duration)}
+            </span>
+          )}
+        </div>
+      )}
+
       {/* Top row */}
       <div className="flex items-center gap-1.5 mb-2 flex-wrap">
-        <span
-          className={`text-[9px] px-1.5 py-0.5 rounded border font-bold tracking-wider ${signal.bg} ${signal.text}`}
-        >
-          {signal.label}
-        </span>
+        {isYouTube ? (
+          <span className="text-[9px] px-1.5 py-0.5 rounded border font-bold tracking-wider bg-red-50 border-red-200 text-red-700">
+            YOUTUBE
+          </span>
+        ) : (
+          <span
+            className={`text-[9px] px-1.5 py-0.5 rounded border font-bold tracking-wider ${signal.bg} ${signal.text}`}
+          >
+            {signal.label}
+          </span>
+        )}
         {article.competitorName && (
           <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-900 text-white font-medium">
             {article.competitorName}
@@ -90,7 +131,7 @@ export default function ArticleCard({
       </h3>
 
       {/* Summary — only show if it adds value beyond the title */}
-      {article.summary && article.summary.length > 20 && (
+      {!isYouTube && article.summary && article.summary.length > 20 && (
         <p className="text-[12px] text-gray-400 leading-relaxed line-clamp-2 mb-2">
           {article.summary}
         </p>
@@ -109,6 +150,18 @@ export default function ArticleCard({
             <span className="flex items-center gap-1 text-[11px] text-gray-400">
               <MessageSquare className="w-3 h-3" />
               {article.redditComments}
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* YouTube stats */}
+      {isYouTube && (
+        <div className="flex items-center gap-3 mt-1.5">
+          {article.viewCount !== undefined && (
+            <span className="flex items-center gap-1 text-[11px] text-gray-400">
+              <Eye className="w-3 h-3" />
+              {formatViews(article.viewCount)} views
             </span>
           )}
         </div>

@@ -6,6 +6,7 @@ import {
   AlertTriangle,
   MessageCircle,
   Newspaper,
+  Play,
   ArrowUpRight,
   ArrowUp,
 } from "lucide-react";
@@ -17,6 +18,7 @@ interface OverviewProps {
   leadAlerts: Article[];
   competitorArticles: Article[];
   redditArticles: Article[];
+  youtubeArticles: Article[];
   feedArticles: Article[];
   onNavigate: (section: Section) => void;
   onSelectArticle: (article: Article) => void;
@@ -102,6 +104,7 @@ export default function Overview({
   leadAlerts,
   competitorArticles,
   redditArticles,
+  youtubeArticles,
   feedArticles,
   onNavigate,
   onSelectArticle,
@@ -111,6 +114,7 @@ export default function Overview({
     leadAlerts.length +
     competitorArticles.length +
     redditArticles.length +
+    youtubeArticles.length +
     feedArticles.length;
 
   return (
@@ -126,7 +130,7 @@ export default function Overview({
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-6 gap-3">
         <StatCard
           label="Pain Points"
           value={painPoints.length}
@@ -154,6 +158,13 @@ export default function Overview({
           icon={MessageCircle}
           color="bg-amber-50 text-amber-600"
           onClick={() => onNavigate("reddit")}
+        />
+        <StatCard
+          label="YouTube"
+          value={youtubeArticles.length}
+          icon={Play}
+          color="bg-red-50 text-red-600"
+          onClick={() => onNavigate("youtube")}
         />
         <StatCard
           label="Industry"
@@ -287,6 +298,37 @@ export default function Overview({
           ) : (
             <div className="space-y-1">
               {redditArticles.slice(0, 4).map((a) => (
+                <CompactRow
+                  key={a.id}
+                  article={a}
+                  onClick={() => onSelectArticle(a)}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* YouTube */}
+        <div className="bg-white border border-gray-200 rounded-xl p-5 lg:col-span-2">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-[14px] font-semibold text-gray-900 flex items-center gap-2">
+              <Play className="w-3.5 h-3.5 text-red-500" />
+              YouTube
+            </h3>
+            <button
+              onClick={() => onNavigate("youtube")}
+              className="text-[12px] text-gray-500 hover:text-gray-700 font-medium"
+            >
+              View all ({youtubeArticles.length})
+            </button>
+          </div>
+          {youtubeArticles.length === 0 ? (
+            <p className="text-[12px] text-gray-400 py-4 text-center">
+              No videos this week
+            </p>
+          ) : (
+            <div className="space-y-1">
+              {youtubeArticles.slice(0, 4).map((a) => (
                 <CompactRow
                   key={a.id}
                   article={a}

@@ -183,7 +183,7 @@ export const RSS_SOURCES: RSSSource[] = [
   {
     name: "Google News",
     slug: "gnews-voice-deploy",
-    url: "https://news.google.com/rss/search?q=%22voice+ai%22+launches+OR+deploys+OR+adopts+OR+partners+when:7d&hl=en-US&gl=US&ceid=US:en",
+    url: "https://news.google.com/rss/search?q=%22voice+ai%22+%28launches+OR+deploys+OR+adopts+OR+partnership%29+when:7d&hl=en-US&gl=US&ceid=US:en",
     priority: "high",
     category: "use-case",
     tag: "lead",
@@ -191,7 +191,7 @@ export const RSS_SOURCES: RSSSource[] = [
   {
     name: "Google News",
     slug: "gnews-ai-receptionist",
-    url: "https://news.google.com/rss/search?q=%22ai+receptionist%22+OR+%22ai+phone+agent%22+OR+%22voice+bot%22+when:7d&hl=en-US&gl=US&ceid=US:en",
+    url: "https://news.google.com/rss/search?q=%22ai+receptionist%22+OR+%22ai+phone+agent%22+OR+%22virtual+receptionist+ai%22+when:7d&hl=en-US&gl=US&ceid=US:en",
     priority: "high",
     category: "voice-ai",
     tag: "lead",
@@ -199,9 +199,17 @@ export const RSS_SOURCES: RSSSource[] = [
   {
     name: "Google News",
     slug: "gnews-ccai",
-    url: "https://news.google.com/rss/search?q=%22contact+center%22+ai+automation+voice+when:7d&hl=en-US&gl=US&ceid=US:en",
+    url: "https://news.google.com/rss/search?q=%22call+center+ai%22+OR+%22contact+center+ai%22+%28voice+OR+agent+OR+bot%29+when:7d&hl=en-US&gl=US&ceid=US:en",
     priority: "high",
     category: "cx",
+    tag: "lead",
+  },
+  {
+    name: "Google News",
+    slug: "gnews-voice-bot-deploy",
+    url: "https://news.google.com/rss/search?q=%22voice+bot%22+OR+%22voice+agent%22+%28launch+OR+deploy+OR+automate%29+when:7d&hl=en-US&gl=US&ceid=US:en",
+    priority: "high",
+    category: "voice-ai",
     tag: "lead",
   },
 
@@ -448,6 +456,44 @@ export function detectSignalType(
     signalType: "market-news",
     signalLabel: "Industry News",
   };
+}
+
+// ─── Lead relevance filter — only keep articles about companies actually deploying voice AI ──
+const LEAD_MUST_TERMS = [
+  "voice ai", "voice agent", "ai voice", "voice bot", "voicebot",
+  "ai receptionist", "virtual receptionist", "ai phone", "ai calling",
+  "call center ai", "contact center ai", "text to speech", "speech synthesis",
+  "voice cloning", "conversational ai", "telephony ai", "voice api",
+  "voice platform", "ai front desk", "automated calls", "ivr",
+  "voice assistant", "ai call", "ai-powered call", "ai-powered voice",
+];
+
+const LEAD_NOISE_PATTERNS = [
+  /\bdata center\b/i,
+  /\b(country|countries|nation|government)\b.*\b(brace|prepare|ready|future)\b/i,
+  /\bindustry (report|forecast|outlook|trends|braces|prepares)\b/i,
+  /\b(stock|share|equity) (price|alert|buy|sell|market)\b/i,
+  /\b(quarterly|annual) (earnings|results|revenue)\b/i,
+  /\bsecurity (platform|operations|monitoring)\b/i,
+  /\bgpu|semiconductor|chip (fab|manufacturing)\b/i,
+  /\bmarket (share|size|growth|analysis|report|forecast|research)\b/i,
+  /\b(opportunities|trends|outlook)\s+\d{4}/i,
+];
+
+export function isRelevantLead(title: string, summary: string): boolean {
+  const text = `${title} ${summary}`.toLowerCase();
+
+  // Must mention voice AI specifically — not just generic "AI"
+  const hasVoiceAI = LEAD_MUST_TERMS.some((term) => text.includes(term));
+  if (!hasVoiceAI) return false;
+
+  // Filter out noise patterns
+  const fullText = `${title} ${summary}`;
+  for (const pattern of LEAD_NOISE_PATTERNS) {
+    if (pattern.test(fullText)) return false;
+  }
+
+  return true;
 }
 
 // Check if an article is junk that should be filtered out

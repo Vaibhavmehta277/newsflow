@@ -11,9 +11,10 @@ export type Section =
   | "lead-alerts"
   | "competitor-watch"
   | "reddit"
+  | "youtube"
   | "feed";
 
-export type SourceTag = "competitor" | "lead" | "industry" | "community";
+export type SourceTag = "competitor" | "lead" | "industry" | "community" | "youtube";
 
 export type SignalType =
   | "pain-point"
@@ -40,6 +41,9 @@ export interface Article {
   redditScore?: number;
   redditComments?: number;
   subreddit?: string;
+  videoId?: string;
+  viewCount?: number;
+  duration?: number;
 }
 
 export interface SheetRow {

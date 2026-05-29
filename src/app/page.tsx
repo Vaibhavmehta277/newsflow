@@ -44,6 +44,10 @@ const SECTION_TITLES: Record<string, { title: string; subtitle: string }> = {
     title: "Reddit",
     subtitle: "Voice AI discussions from Reddit and Hacker News",
   },
+  youtube: {
+    title: "YouTube",
+    subtitle: "Latest voice AI videos — tutorials, demos, reviews, and news",
+  },
   feed: {
     title: "All Articles",
     subtitle: "Industry news and market intelligence from the last 7 days",
@@ -111,16 +115,19 @@ export default function Home() {
   // 4. Reddit (sourceTag === "community")
   // 5. Feed (everything else = industry news)
 
-  const { painPoints, competitorArticles, leadAlerts, redditArticles, feedArticles } =
+  const { painPoints, competitorArticles, leadAlerts, redditArticles, youtubeArticles, feedArticles } =
     useMemo(() => {
       const pain: Article[] = [];
       const comp: Article[] = [];
       const leads: Article[] = [];
       const reddit: Article[] = [];
+      const youtube: Article[] = [];
       const feed: Article[] = [];
 
       for (const a of articles) {
-        if (a.signalType === "pain-point") {
+        if (a.sourceTag === "youtube") {
+          youtube.push(a);
+        } else if (a.signalType === "pain-point") {
           pain.push(a);
         } else if (
           a.sourceTag === "competitor" ||
@@ -143,6 +150,7 @@ export default function Home() {
         competitorArticles: comp,
         leadAlerts: leads,
         redditArticles: reddit,
+        youtubeArticles: youtube,
         feedArticles: feed,
       };
     }, [articles]);
@@ -162,6 +170,9 @@ export default function Home() {
         break;
       case "reddit":
         result = redditArticles;
+        break;
+      case "youtube":
+        result = youtubeArticles;
         break;
       case "feed":
         result = feedArticles;
@@ -184,6 +195,7 @@ export default function Home() {
     competitorArticles,
     leadAlerts,
     redditArticles,
+    youtubeArticles,
     feedArticles,
     activeSection,
     search,
@@ -196,9 +208,10 @@ export default function Home() {
       "lead-alerts": leadAlerts.length,
       "competitor-watch": competitorArticles.length,
       reddit: redditArticles.length,
+      youtube: youtubeArticles.length,
       feed: feedArticles.length,
     }),
-    [painPoints, leadAlerts, competitorArticles, redditArticles, feedArticles]
+    [painPoints, leadAlerts, competitorArticles, redditArticles, youtubeArticles, feedArticles]
   );
 
   if (status === "loading") {
@@ -221,6 +234,7 @@ export default function Home() {
           leadAlerts={leadAlerts}
           competitorArticles={competitorArticles}
           redditArticles={redditArticles}
+          youtubeArticles={youtubeArticles}
           feedArticles={feedArticles}
           onNavigate={(section) => {
             setActiveSection(section);

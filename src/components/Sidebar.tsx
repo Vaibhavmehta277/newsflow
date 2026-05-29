@@ -8,6 +8,7 @@ import {
   Eye,
   AlertTriangle,
   MessageCircle,
+  Play,
   LogOut,
 } from "lucide-react";
 import type { Section } from "@/types";
@@ -28,6 +29,7 @@ const SECTIONS: {
   { section: "lead-alerts", label: "Lead Alerts", icon: Zap },
   { section: "competitor-watch", label: "Competitor Intel", icon: Eye },
   { section: "reddit", label: "Reddit", icon: MessageCircle },
+  { section: "youtube", label: "YouTube", icon: Play },
   { section: "feed", label: "All Articles", icon: Newspaper },
 ];
 
