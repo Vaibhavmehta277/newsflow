@@ -2,11 +2,12 @@
 
 import { useMemo } from "react";
 import {
-  Newspaper,
   Zap,
   Eye,
+  AlertTriangle,
   TrendingUp,
   ArrowUpRight,
+  MessageCircle,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import type { Article, SheetRow, Section } from "@/types";
@@ -23,11 +24,13 @@ function StatCard({
   label,
   value,
   icon: Icon,
+  color,
   onClick,
 }: {
   label: string;
   value: number | string;
   icon: React.ElementType;
+  color: string;
   onClick?: () => void;
 }) {
   return (
@@ -36,8 +39,8 @@ function StatCard({
       className="bg-white border border-gray-200 rounded-xl p-4 hover:border-gray-300 hover:shadow-sm transition-all text-left w-full group"
     >
       <div className="flex items-center justify-between mb-3">
-        <div className="p-2 rounded-lg bg-gray-50">
-          <Icon className="w-4 h-4 text-gray-500" />
+        <div className={`p-2 rounded-lg ${color}`}>
+          <Icon className="w-4 h-4" />
         </div>
         {onClick && (
           <ArrowUpRight className="w-3.5 h-3.5 text-gray-300 group-hover:text-gray-500 transition-colors" />
@@ -54,13 +57,23 @@ function StatCard({
 function ArticleRow({
   article,
   onClick,
+  showSignal,
 }: {
   article: Article;
   onClick: () => void;
+  showSignal?: boolean;
 }) {
   const timeAgo = formatDistanceToNow(new Date(article.publishedAt), {
     addSuffix: true,
   });
+
+  const signalColors: Record<string, string> = {
+    "pain-point": "bg-red-50 text-red-600 border-red-100",
+    "competitor-move": "bg-purple-50 text-purple-600 border-purple-100",
+    "lead-signal": "bg-emerald-50 text-emerald-600 border-emerald-100",
+    "market-news": "bg-blue-50 text-blue-600 border-blue-100",
+    community: "bg-amber-50 text-amber-600 border-amber-100",
+  };
 
   return (
     <button
@@ -68,10 +81,30 @@ function ArticleRow({
       className="w-full flex items-start gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors text-left group"
     >
       <div className="flex-1 min-w-0">
+        {showSignal && article.signalType && (
+          <span
+            className={`inline-block text-[9px] px-1.5 py-0.5 rounded border font-semibold uppercase tracking-wide mb-1.5 ${signalColors[article.signalType] || ""}`}
+          >
+            {article.signalType === "pain-point"
+              ? "Pain Point"
+              : article.signalType === "competitor-move"
+                ? "Competitor"
+                : article.signalType === "lead-signal"
+                  ? "Lead"
+                  : "Market"}
+          </span>
+        )}
         <p className="text-[13px] text-gray-800 font-medium leading-snug line-clamp-2 group-hover:text-gray-900">
           {article.title}
         </p>
         <div className="flex items-center gap-2 mt-1.5">
+          {article.competitorName && (
+            <>
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-900 text-white font-medium">
+                {article.competitorName}
+              </span>
+            </>
+          )}
           <span className="text-[11px] text-gray-400">{article.source}</span>
           <span className="text-[11px] text-gray-300">&middot;</span>
           <span className="text-[11px] text-gray-400">{timeAgo}</span>
@@ -88,7 +121,6 @@ export default function Overview({
   onNavigate,
   onSelectArticle,
 }: OverviewProps) {
-  // Use sourceTag for reliable section filtering
   const leadAlerts = useMemo(() => {
     return articles.filter((a) => a.sourceTag === "lead");
   }, [articles]);
@@ -101,86 +133,89 @@ export default function Overview({
     });
   }, [articles]);
 
-  const savedCount = sheetRows.filter(
-    (r) =>
-      r.status === "saved" ||
-      r.platform === "youtube" ||
-      r.platform === "blog"
-  ).length;
-
-  // Top stories: prioritize by relevance score
-  const topStories = useMemo(() => {
-    const scored = articles.map((a) => {
-      let score = 0;
-      if (a.sourceTag === "competitor") score += 10;
-      if (a.sourceTag === "lead") score += 8;
-      if (a.category === "voice-ai") score += 5;
-      if (a.category === "use-case") score += 3;
-      if (a.category === "market-intel") score += 3;
-      if (a.sourceTag === "community") score += 2;
-      // Recency boost
-      const hoursAgo =
-        (Date.now() - new Date(a.publishedAt).getTime()) / (1000 * 60 * 60);
-      if (hoursAgo < 6) score += 5;
-      else if (hoursAgo < 24) score += 3;
-      else if (hoursAgo < 48) score += 1;
-      return { article: a, score };
-    });
-    return scored
-      .sort((a, b) => b.score - a.score)
-      .slice(0, 5)
-      .map((s) => s.article);
+  const painPoints = useMemo(() => {
+    return articles.filter((a) => a.signalType === "pain-point");
   }, [articles]);
+
+  const communityPosts = useMemo(() => {
+    return articles.filter((a) => a.sourceTag === "community");
+  }, [articles]);
+
+  // Priority items: pain points first, then competitor moves, then leads
+  const priorityItems = useMemo(() => {
+    const items: Article[] = [];
+    // Pain points are gold — competitor weaknesses you can exploit
+    items.push(...painPoints);
+    // Fresh competitor moves
+    items.push(
+      ...competitorArticles
+        .filter((a) => !items.find((i) => i.id === a.id))
+        .slice(0, 3)
+    );
+    // Top leads
+    items.push(
+      ...leadAlerts
+        .filter((a) => !items.find((i) => i.id === a.id))
+        .slice(0, 3)
+    );
+    return items.slice(0, 8);
+  }, [painPoints, competitorArticles, leadAlerts]);
 
   return (
     <div className="p-6 max-w-[1100px] space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-lg font-semibold text-gray-900">Overview</h1>
+        <h1 className="text-lg font-semibold text-gray-900">
+          Intelligence Overview
+        </h1>
         <p className="text-[13px] text-gray-500 mt-0.5">
-          Last 7 days across voice AI, competitors, and market signals
+          Voice AI market signals from the last 7 days
         </p>
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <StatCard
-          label="Total Articles"
-          value={articles.length}
-          icon={Newspaper}
-          onClick={() => onNavigate("feed")}
-        />
-        <StatCard
-          label="Lead Alerts"
+          label="Lead Signals"
           value={leadAlerts.length}
           icon={Zap}
+          color="bg-emerald-50 text-emerald-600"
           onClick={() => onNavigate("lead-alerts")}
         />
         <StatCard
-          label="Competitor Mentions"
+          label="Competitor Moves"
           value={competitorArticles.length}
           icon={Eye}
+          color="bg-purple-50 text-purple-600"
           onClick={() => onNavigate("competitor-watch")}
         />
         <StatCard
-          label="Saved Items"
-          value={savedCount}
-          icon={TrendingUp}
-          onClick={() => onNavigate("edits")}
+          label="Pain Points"
+          value={painPoints.length}
+          icon={AlertTriangle}
+          color="bg-red-50 text-red-600"
+          onClick={() => onNavigate("reddit")}
+        />
+        <StatCard
+          label="Community Posts"
+          value={communityPosts.length}
+          icon={MessageCircle}
+          color="bg-amber-50 text-amber-600"
+          onClick={() => onNavigate("reddit")}
         />
       </div>
 
       {/* Main content grid */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
-        {/* Top stories — takes 3 cols */}
+        {/* Priority Intelligence — takes 3 cols */}
         <div className="lg:col-span-3 bg-white border border-gray-200 rounded-xl p-5">
           <div className="flex items-center justify-between mb-4">
             <div>
               <h3 className="text-[14px] font-semibold text-gray-900">
-                Top Stories
+                Priority Intelligence
               </h3>
               <p className="text-[11px] text-gray-400 mt-0.5">
-                Most relevant to Smallest AI right now
+                Pain points, competitor moves, and leads — act on these first
               </p>
             </div>
             <button
@@ -190,19 +225,20 @@ export default function Overview({
               View all
             </button>
           </div>
-          {topStories.length === 0 ? (
+          {priorityItems.length === 0 ? (
             <div className="py-8 text-center">
               <p className="text-[13px] text-gray-500">
-                No articles yet. Click Refresh to fetch latest data.
+                No priority items yet. Click Refresh to fetch latest data.
               </p>
             </div>
           ) : (
             <div className="space-y-0.5">
-              {topStories.map((article) => (
+              {priorityItems.map((article) => (
                 <ArticleRow
                   key={article.id}
                   article={article}
                   onClick={() => onSelectArticle(article)}
+                  showSignal
                 />
               ))}
             </div>
@@ -215,19 +251,19 @@ export default function Overview({
           <div className="bg-white border border-gray-200 rounded-xl p-5">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-[14px] font-semibold text-gray-900 flex items-center gap-2">
-                <Zap className="w-3.5 h-3.5 text-gray-400" />
-                Lead Signals
+                <Zap className="w-3.5 h-3.5 text-emerald-500" />
+                Fresh Leads
               </h3>
               <button
                 onClick={() => onNavigate("lead-alerts")}
                 className="text-[12px] text-gray-500 hover:text-gray-700 font-medium transition-colors"
               >
-                View all
+                View all ({leadAlerts.length})
               </button>
             </div>
             {leadAlerts.length === 0 ? (
               <p className="text-[12px] text-gray-400 py-4 text-center">
-                No lead signals in the last 3 days
+                No lead signals in the last 7 days
               </p>
             ) : (
               <div className="space-y-2">
@@ -235,13 +271,16 @@ export default function Overview({
                   <button
                     key={a.id}
                     onClick={() => onSelectArticle(a)}
-                    className="w-full text-left p-2 rounded-lg hover:bg-gray-50 transition-colors"
+                    className="w-full text-left p-2.5 rounded-lg hover:bg-gray-50 transition-colors"
                   >
                     <p className="text-[12px] text-gray-700 font-medium leading-snug line-clamp-2">
                       {a.title}
                     </p>
                     <p className="text-[11px] text-gray-400 mt-1">
-                      {a.source}
+                      {a.source} &middot;{" "}
+                      {formatDistanceToNow(new Date(a.publishedAt), {
+                        addSuffix: true,
+                      })}
                     </p>
                   </button>
                 ))}
@@ -253,49 +292,81 @@ export default function Overview({
           <div className="bg-white border border-gray-200 rounded-xl p-5">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-[14px] font-semibold text-gray-900 flex items-center gap-2">
-                <Eye className="w-3.5 h-3.5 text-gray-400" />
+                <Eye className="w-3.5 h-3.5 text-purple-500" />
                 Competitor Watch
               </h3>
               <button
                 onClick={() => onNavigate("competitor-watch")}
                 className="text-[12px] text-gray-500 hover:text-gray-700 font-medium transition-colors"
               >
-                View all
+                View all ({competitorArticles.length})
               </button>
             </div>
             {competitorArticles.length === 0 ? (
               <p className="text-[12px] text-gray-400 py-4 text-center">
-                No competitor news in the last 3 days
+                No competitor news in the last 7 days
               </p>
             ) : (
               <div className="space-y-2">
-                {competitorArticles.slice(0, 3).map((a) => {
-                  const titleLower = a.title.toLowerCase();
-                  const textLower = `${a.title} ${a.summary}`.toLowerCase();
-                  const competitor =
-                    COMPETITOR_NAMES.find((n) => titleLower.includes(n)) ||
-                    COMPETITOR_NAMES.find((n) => textLower.includes(n)) ||
-                    "";
-                  return (
-                    <button
-                      key={a.id}
-                      onClick={() => onSelectArticle(a)}
-                      className="w-full text-left p-2 rounded-lg hover:bg-gray-50 transition-colors"
-                    >
-                      {competitor && (
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 font-medium capitalize">
-                          {competitor}
-                        </span>
-                      )}
-                      <p className="text-[12px] text-gray-700 font-medium leading-snug line-clamp-2 mt-1">
-                        {a.title}
-                      </p>
-                    </button>
-                  );
-                })}
+                {competitorArticles.slice(0, 3).map((a) => (
+                  <button
+                    key={a.id}
+                    onClick={() => onSelectArticle(a)}
+                    className="w-full text-left p-2.5 rounded-lg hover:bg-gray-50 transition-colors"
+                  >
+                    {a.competitorName && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-900 text-white font-medium">
+                        {a.competitorName}
+                      </span>
+                    )}
+                    <p className="text-[12px] text-gray-700 font-medium leading-snug line-clamp-2 mt-1">
+                      {a.title}
+                    </p>
+                  </button>
+                ))}
               </div>
             )}
           </div>
+
+          {/* Pain Points — if any exist */}
+          {painPoints.length > 0 && (
+            <div className="bg-white border border-red-100 rounded-xl p-5">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-[14px] font-semibold text-gray-900 flex items-center gap-2">
+                  <AlertTriangle className="w-3.5 h-3.5 text-red-500" />
+                  Pain Points
+                </h3>
+                <button
+                  onClick={() => onNavigate("reddit")}
+                  className="text-[12px] text-gray-500 hover:text-gray-700 font-medium transition-colors"
+                >
+                  View all
+                </button>
+              </div>
+              <p className="text-[11px] text-gray-400 mb-3">
+                Competitor weaknesses and user complaints — opportunities for
+                Smallest AI
+              </p>
+              <div className="space-y-2">
+                {painPoints.slice(0, 3).map((a) => (
+                  <button
+                    key={a.id}
+                    onClick={() => onSelectArticle(a)}
+                    className="w-full text-left p-2.5 rounded-lg hover:bg-red-50/50 transition-colors"
+                  >
+                    {a.competitorName && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-100 text-red-700 font-medium">
+                        {a.competitorName}
+                      </span>
+                    )}
+                    <p className="text-[12px] text-gray-700 font-medium leading-snug line-clamp-2 mt-1">
+                      {a.title}
+                    </p>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

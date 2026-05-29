@@ -29,15 +29,22 @@ function SkeletonCard() {
 const SECTION_TITLES: Record<string, { title: string; subtitle: string }> = {
   feed: {
     title: "Feed",
-    subtitle: "All curated articles from the last 7 days",
+    subtitle: "All voice AI intelligence from the last 7 days",
   },
   "lead-alerts": {
     title: "Lead Alerts",
-    subtitle: "Companies deploying voice AI — potential customers and market signals",
+    subtitle:
+      "Companies deploying voice AI — potential customers and market signals",
   },
   "competitor-watch": {
     title: "Competitor Watch",
-    subtitle: "Latest from Vapi, Retell, ElevenLabs, Bland AI, Synthflow — across news, Reddit, blogs",
+    subtitle:
+      "Vapi, Retell, ElevenLabs, Bland AI, Synthflow — news, launches, and moves",
+  },
+  reddit: {
+    title: "Reddit & Community",
+    subtitle:
+      "Pain points, complaints, comparisons, and discussions from Reddit and Hacker News",
   },
 };
 
@@ -111,37 +118,42 @@ export default function Home() {
     debounceRef.current = setTimeout(() => setSearch(value), 300);
   };
 
-  // ── Section filtering using sourceTag (not keyword guessing) ──
+  // ── Section filtering ──
 
-  // Lead Alerts: articles from "lead" tagged sources
+  // Lead Alerts: articles tagged as lead signals
   const leadAlerts = useMemo(() => {
     return articles.filter((a) => a.sourceTag === "lead");
   }, [articles]);
 
-  // Competitor Watch: articles from "competitor" tagged sources
-  // PLUS any article from other sources that mentions a competitor by name
+  // Competitor Watch: articles from competitor sources + any mentioning competitors
   const competitorArticles = useMemo(() => {
     return articles.filter((a) => {
       if (a.sourceTag === "competitor") return true;
+      if (a.competitorName) return true;
       const text = `${a.title} ${a.summary}`.toLowerCase();
       return COMPETITOR_NAMES.some((name) => text.includes(name));
     });
   }, [articles]);
 
-  // YouTube suggestions: competitor moves, funding, product launches (good for video)
+  // Reddit & Community: all community-tagged articles
+  const communityArticles = useMemo(() => {
+    return articles.filter((a) => a.sourceTag === "community");
+  }, [articles]);
+
+  // YouTube suggestions: competitor moves, funding, product launches
   const youtubeSuggestions = useMemo(() => {
     return articles
       .filter((a) => {
         const text = `${a.title}`.toLowerCase();
         return (
           a.sourceTag === "competitor" ||
+          a.signalType === "competitor-move" ||
           text.includes("launch") ||
           text.includes("raises") ||
           text.includes("funding") ||
           text.includes("announces") ||
-          text.includes("new") ||
           text.includes("vs") ||
-          a.sourceTag === "community"
+          a.signalType === "pain-point"
         );
       })
       .slice(0, 10);
@@ -180,6 +192,9 @@ export default function Home() {
       case "competitor-watch":
         result = competitorArticles;
         break;
+      case "reddit":
+        result = communityArticles;
+        break;
       default:
         result = [];
     }
@@ -188,11 +203,20 @@ export default function Home() {
       result = result.filter(
         (a) =>
           a.title.toLowerCase().includes(lower) ||
-          a.summary.toLowerCase().includes(lower)
+          a.summary.toLowerCase().includes(lower) ||
+          (a.competitorName || "").toLowerCase().includes(lower) ||
+          (a.signalLabel || "").toLowerCase().includes(lower)
       );
     }
     return result;
-  }, [articles, leadAlerts, competitorArticles, activeSection, search]);
+  }, [
+    articles,
+    leadAlerts,
+    competitorArticles,
+    communityArticles,
+    activeSection,
+    search,
+  ]);
 
   // Content pipeline data from sheets
   const youtubeRows = useMemo(
@@ -214,14 +238,21 @@ export default function Home() {
       feed: articles.length,
       "lead-alerts": leadAlerts.length,
       "competitor-watch": competitorArticles.length,
+      reddit: communityArticles.length,
       youtube: youtubeRows.length || youtubeSuggestions.length,
       blogs: blogRows.length || blogSuggestions.length,
       edits: editRows.length,
     }),
     [
-      articles, leadAlerts, competitorArticles,
-      youtubeRows, blogRows, editRows,
-      youtubeSuggestions, blogSuggestions,
+      articles,
+      leadAlerts,
+      competitorArticles,
+      communityArticles,
+      youtubeRows,
+      blogRows,
+      editRows,
+      youtubeSuggestions,
+      blogSuggestions,
     ]
   );
 
@@ -238,7 +269,8 @@ export default function Home() {
   const isFeedSection =
     activeSection === "feed" ||
     activeSection === "lead-alerts" ||
-    activeSection === "competitor-watch";
+    activeSection === "competitor-watch" ||
+    activeSection === "reddit";
 
   const isContentSection =
     activeSection === "youtube" ||
@@ -265,14 +297,14 @@ export default function Home() {
         activeSection === "youtube"
           ? youtubeRows
           : activeSection === "blogs"
-          ? blogRows
-          : editRows;
+            ? blogRows
+            : editRows;
       const suggestions =
         activeSection === "youtube"
           ? youtubeSuggestions
           : activeSection === "blogs"
-          ? blogSuggestions
-          : [];
+            ? blogSuggestions
+            : [];
       return (
         <ContentPipeline
           rows={rows}

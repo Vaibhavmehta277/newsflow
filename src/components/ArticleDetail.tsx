@@ -13,8 +13,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { format } from "date-fns";
-import type { Article } from "@/types";
-import { CATEGORY_LABELS } from "@/lib/keywords";
+import type { Article, SignalType } from "@/types";
 
 interface ArticleDetailProps {
   article: Article;
@@ -22,26 +21,39 @@ interface ArticleDetailProps {
   onSaved?: () => void;
 }
 
-const RELEVANCE_MAP: Record<string, { label: string; description: string }> = {
-  "voice-ai": {
-    label: "Core Technology",
-    description: "Directly related to voice AI technology and products",
+const SIGNAL_CONTEXT: Record<
+  SignalType,
+  { label: string; description: string; color: string }
+> = {
+  "pain-point": {
+    label: "Competitor Weakness / Pain Point",
+    description:
+      "Users are frustrated with a competitor — this is an opportunity for Smallest AI to win them over",
+    color: "bg-red-50 border-red-100 text-red-800",
   },
-  "use-case": {
-    label: "Market Opportunity",
-    description: "Potential use case or industry adopting voice AI",
+  "competitor-move": {
+    label: "Competitor Move",
+    description:
+      "A competitor made a move (launch, partnership, funding) — evaluate if this changes our positioning",
+    color: "bg-purple-50 border-purple-100 text-purple-800",
   },
-  "market-intel": {
-    label: "Competitor Activity",
-    description: "Competitor or market movement worth tracking",
+  "lead-signal": {
+    label: "Potential Lead",
+    description:
+      "A company is deploying or looking for voice AI — potential customer for Smallest AI",
+    color: "bg-emerald-50 border-emerald-100 text-emerald-800",
   },
-  cx: {
-    label: "Customer Experience",
-    description: "Contact center and CX automation trends",
+  "market-news": {
+    label: "Market Intelligence",
+    description:
+      "Voice AI industry development — keep this on your radar for strategy",
+    color: "bg-blue-50 border-blue-100 text-blue-800",
   },
-  "ai-news": {
-    label: "Industry News",
-    description: "Broader AI industry development",
+  community: {
+    label: "Community Discussion",
+    description:
+      "Voice AI community is talking about this — useful for content ideas and market pulse",
+    color: "bg-amber-50 border-amber-100 text-amber-800",
   },
 };
 
@@ -56,12 +68,11 @@ export default function ArticleDetail({
   >("idle");
   const [savedPlatform, setSavedPlatform] = useState("");
 
-  const relevance = RELEVANCE_MAP[article.category] || RELEVANCE_MAP["ai-news"];
+  const signal = article.signalType
+    ? SIGNAL_CONTEXT[article.signalType]
+    : SIGNAL_CONTEXT["market-news"];
 
-  const handleSave = async (
-    platform: string,
-    status: string = "saved"
-  ) => {
+  const handleSave = async (platform: string, status: string = "saved") => {
     if (!session) return;
     setLogStatus("loading");
     try {
@@ -95,10 +106,27 @@ export default function ArticleDetail({
       <div className="px-5 py-4 border-b border-gray-100 sticky top-0 bg-white z-10">
         <div className="flex items-start justify-between">
           <div className="flex-1 min-w-0 pr-3">
-            <div className="flex items-center gap-2 mb-2">
-              <span className="text-[11px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 font-medium">
-                {CATEGORY_LABELS[article.category] || article.category}
-              </span>
+            <div className="flex items-center gap-2 mb-2 flex-wrap">
+              {article.signalType && (
+                <span
+                  className={`text-[10px] px-1.5 py-0.5 rounded border font-semibold uppercase tracking-wide ${signal.color}`}
+                >
+                  {article.signalType === "pain-point"
+                    ? "Pain Point"
+                    : article.signalType === "competitor-move"
+                      ? "Competitor"
+                      : article.signalType === "lead-signal"
+                        ? "Lead"
+                        : article.signalType === "community"
+                          ? "Community"
+                          : "Market"}
+                </span>
+              )}
+              {article.competitorName && (
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-900 text-white font-medium">
+                  {article.competitorName}
+                </span>
+              )}
               <span className="text-[11px] text-gray-400">
                 {format(new Date(article.publishedAt), "MMM d, yyyy")}
               </span>
@@ -138,17 +166,13 @@ export default function ArticleDetail({
           <ExternalLink className="w-3.5 h-3.5" />
         </a>
 
-        {/* Relevance tag */}
-        <div className="bg-gray-50 border border-gray-100 rounded-lg p-3">
-          <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-1">
+        {/* Why this matters — signal-based context */}
+        <div className={`rounded-lg p-3 border ${signal.color}`}>
+          <p className="text-[11px] font-semibold uppercase tracking-wider mb-1 opacity-80">
             Why this matters
           </p>
-          <p className="text-[13px] text-gray-700 font-medium">
-            {relevance.label}
-          </p>
-          <p className="text-[12px] text-gray-500 mt-0.5">
-            {relevance.description}
-          </p>
+          <p className="text-[13px] font-medium">{signal.label}</p>
+          <p className="text-[12px] mt-0.5 opacity-80">{signal.description}</p>
         </div>
 
         {/* Divider */}

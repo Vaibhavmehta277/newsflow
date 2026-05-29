@@ -6,6 +6,7 @@ import {
   Newspaper,
   Zap,
   Eye,
+  MessageCircle,
   Play,
   PenLine,
   FileEdit,
@@ -19,18 +20,24 @@ interface SidebarProps {
   counts?: Partial<Record<Section, number>>;
 }
 
-const MONITOR_ITEMS: { section: Section; label: string; icon: typeof LayoutGrid }[] = [
+const MONITOR_ITEMS: {
+  section: Section;
+  label: string;
+  icon: typeof LayoutGrid;
+}[] = [
   { section: "overview", label: "Overview", icon: LayoutGrid },
   { section: "feed", label: "Feed", icon: Newspaper },
   { section: "lead-alerts", label: "Lead Alerts", icon: Zap },
   { section: "competitor-watch", label: "Competitor Watch", icon: Eye },
+  { section: "reddit", label: "Reddit & Community", icon: MessageCircle },
 ];
 
-const CONTENT_ITEMS: { section: Section; label: string; icon: typeof Play }[] = [
-  { section: "youtube", label: "YouTube", icon: Play },
-  { section: "blogs", label: "Blogs", icon: PenLine },
-  { section: "edits", label: "Edits", icon: FileEdit },
-];
+const CONTENT_ITEMS: { section: Section; label: string; icon: typeof Play }[] =
+  [
+    { section: "youtube", label: "YouTube", icon: Play },
+    { section: "blogs", label: "Blogs", icon: PenLine },
+    { section: "edits", label: "Edits", icon: FileEdit },
+  ];
 
 export default function Sidebar({
   activeSection,
@@ -51,7 +58,7 @@ export default function Sidebar({
       <nav className="flex-1 px-3 py-4 overflow-y-auto">
         {/* Monitor section */}
         <p className="px-2.5 mb-2 text-[10px] font-semibold text-gray-400 uppercase tracking-widest">
-          Monitor
+          Intelligence
         </p>
         <div className="space-y-0.5 mb-6">
           {MONITOR_ITEMS.map(({ section, label, icon: Icon }) => {

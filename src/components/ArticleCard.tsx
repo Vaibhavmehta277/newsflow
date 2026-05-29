@@ -2,14 +2,44 @@
 
 import { formatDistanceToNow } from "date-fns";
 import { ExternalLink, ArrowRight } from "lucide-react";
-import type { Article } from "@/types";
-import { CATEGORY_LABELS } from "@/lib/keywords";
+import type { Article, SignalType } from "@/types";
 
 interface ArticleCardProps {
   article: Article;
   isSelected: boolean;
   onClick: () => void;
 }
+
+const SIGNAL_STYLES: Record<
+  SignalType,
+  { bg: string; text: string; label: string }
+> = {
+  "pain-point": {
+    bg: "bg-red-50 border-red-100",
+    text: "text-red-700",
+    label: "Pain Point",
+  },
+  "competitor-move": {
+    bg: "bg-purple-50 border-purple-100",
+    text: "text-purple-700",
+    label: "Competitor",
+  },
+  "lead-signal": {
+    bg: "bg-emerald-50 border-emerald-100",
+    text: "text-emerald-700",
+    label: "Lead Signal",
+  },
+  "market-news": {
+    bg: "bg-blue-50 border-blue-100",
+    text: "text-blue-700",
+    label: "Market",
+  },
+  community: {
+    bg: "bg-amber-50 border-amber-100",
+    text: "text-amber-700",
+    label: "Community",
+  },
+};
 
 export default function ArticleCard({
   article,
@@ -20,6 +50,10 @@ export default function ArticleCard({
     addSuffix: true,
   });
 
+  const signal = article.signalType
+    ? SIGNAL_STYLES[article.signalType]
+    : SIGNAL_STYLES["market-news"];
+
   return (
     <div
       onClick={onClick}
@@ -29,27 +63,41 @@ export default function ArticleCard({
           : "bg-white border-gray-200 hover:border-gray-300 hover:shadow-sm"
       }`}
     >
-      {/* Source + time */}
-      <div className="flex items-center gap-2 mb-2">
-        <span className="text-[12px] text-gray-500 font-medium">
+      {/* Top row: signal badge + competitor name + source + time */}
+      <div className="flex items-center gap-2 mb-2 flex-wrap">
+        <span
+          className={`text-[10px] px-1.5 py-0.5 rounded border font-semibold uppercase tracking-wide ${signal.bg} ${signal.text}`}
+        >
+          {signal.label}
+        </span>
+        {article.competitorName && (
+          <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-900 text-white font-medium">
+            {article.competitorName}
+          </span>
+        )}
+        <div className="flex-1" />
+        <span className="text-[11px] text-gray-400">
           {article.source}
         </span>
-        <span className="text-[12px] text-gray-300">&middot;</span>
-        <span className="text-[12px] text-gray-400">{timeAgo}</span>
-        <div className="flex-1" />
-        <span className="text-[11px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 font-medium">
-          {CATEGORY_LABELS[article.category] || article.category}
-        </span>
+        <span className="text-[11px] text-gray-300">&middot;</span>
+        <span className="text-[11px] text-gray-400">{timeAgo}</span>
       </div>
 
       {/* Title */}
-      <h3 className="text-[14px] font-semibold leading-snug text-gray-900 mb-1.5 group-hover:text-black transition-colors">
+      <h3 className="text-[14px] font-semibold leading-snug text-gray-900 mb-1 group-hover:text-black transition-colors">
         {article.title}
       </h3>
 
+      {/* Signal label — why this matters */}
+      {article.signalLabel && (
+        <p className="text-[12px] text-gray-500 mb-1.5 font-medium">
+          {article.signalLabel}
+        </p>
+      )}
+
       {/* Summary */}
       {article.summary && (
-        <p className="text-[13px] text-gray-500 leading-relaxed line-clamp-2">
+        <p className="text-[12px] text-gray-400 leading-relaxed line-clamp-2">
           {article.summary}
         </p>
       )}

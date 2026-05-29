@@ -1,4 +1,4 @@
-import type { KeywordGroup, RSSSource } from "@/types";
+import type { KeywordGroup, RSSSource, SignalType } from "@/types";
 
 export const KEYWORD_GROUPS: KeywordGroup[] = [
   {
@@ -21,7 +21,6 @@ export const KEYWORD_GROUPS: KeywordGroup[] = [
       "ai scheduling",
       "ai phone agent",
       "text to speech",
-      "tts",
       "neural voice",
       "speech synthesis",
       "voice cloning",
@@ -53,9 +52,8 @@ export const KEYWORD_GROUPS: KeywordGroup[] = [
     label: "Market Intel",
     category: "market-intel",
     keywords: [
-      "vapi",
+      "vapi ai",
       "retell ai",
-      "retell",
       "elevenlabs",
       "bland ai",
       "synthflow",
@@ -136,15 +134,14 @@ export function detectKeywords(text: string): {
 }
 
 // ─── RSS Sources ──────────────────────────────────────────────────────────────
-// Organized by PURPOSE, not by blog name. Each source is tagged so articles
-// route automatically to the correct section (Competitor Watch, Lead Alerts, Feed).
+// Organized by PURPOSE. Each source is tagged so articles route automatically.
 
 export const RSS_SOURCES: RSSSource[] = [
   // ── COMPETITOR TRACKING (Google News — last 7 days) ──
   {
     name: "Google News",
     slug: "gnews-vapi",
-    url: "https://news.google.com/rss/search?q=vapi+ai+OR+%22vapi+voice%22+when:7d&hl=en-US&gl=US&ceid=US:en",
+    url: "https://news.google.com/rss/search?q=%22vapi+ai%22+OR+%22vapi+voice%22+when:7d&hl=en-US&gl=US&ceid=US:en",
     priority: "high",
     category: "market-intel",
     tag: "competitor",
@@ -186,7 +183,7 @@ export const RSS_SOURCES: RSSSource[] = [
   {
     name: "Google News",
     slug: "gnews-voice-deploy",
-    url: "https://news.google.com/rss/search?q=%22voice+ai%22+launches+OR+deploys+OR+adopts+when:7d&hl=en-US&gl=US&ceid=US:en",
+    url: "https://news.google.com/rss/search?q=%22voice+ai%22+launches+OR+deploys+OR+adopts+OR+partners+when:7d&hl=en-US&gl=US&ceid=US:en",
     priority: "high",
     category: "use-case",
     tag: "lead",
@@ -212,7 +209,7 @@ export const RSS_SOURCES: RSSSource[] = [
   {
     name: "Google News",
     slug: "gnews-voiceai",
-    url: "https://news.google.com/rss/search?q=%22voice+ai%22+agent+OR+platform+when:7d&hl=en-US&gl=US&ceid=US:en",
+    url: "https://news.google.com/rss/search?q=%22voice+ai%22+agent+OR+platform+OR+startup+when:7d&hl=en-US&gl=US&ceid=US:en",
     priority: "high",
     category: "voice-ai",
     tag: "industry",
@@ -225,28 +222,28 @@ export const RSS_SOURCES: RSSSource[] = [
     category: "voice-ai",
     tag: "industry",
   },
-  {
-    name: "TechCrunch AI",
-    slug: "techcrunch",
-    url: "https://techcrunch.com/category/artificial-intelligence/feed",
-    priority: "medium",
-    category: "ai-news",
-    tag: "industry",
-  },
-  {
-    name: "VentureBeat AI",
-    slug: "venturebeat",
-    url: "https://venturebeat.com/category/ai/feed",
-    priority: "medium",
-    category: "ai-news",
-    tag: "industry",
-  },
 
-  // ── COMMUNITY (Reddit, Hacker News) ──
+  // ── COMMUNITY (Reddit — specific subreddits + search) ──
   {
     name: "Reddit",
     slug: "reddit-voiceai",
-    url: "https://www.reddit.com/search.rss?q=%22voice+ai%22+OR+%22voice+agent%22+OR+vapi+OR+retell+OR+elevenlabs&sort=new&t=week",
+    url: "https://www.reddit.com/search.rss?q=%22voice+ai%22+OR+%22voice+agent%22+OR+%22ai+receptionist%22+OR+%22ai+call+center%22&sort=new&t=week",
+    priority: "high",
+    category: "voice-ai",
+    tag: "community",
+  },
+  {
+    name: "Reddit",
+    slug: "reddit-competitors",
+    url: "https://www.reddit.com/search.rss?q=%22vapi+ai%22+OR+%22vapi%22+voice+OR+%22retell+ai%22+OR+elevenlabs+OR+%22bland+ai%22+OR+synthflow&sort=new&t=week",
+    priority: "high",
+    category: "market-intel",
+    tag: "community",
+  },
+  {
+    name: "Reddit",
+    slug: "reddit-saas-ai",
+    url: "https://www.reddit.com/r/SaaS/search.rss?q=voice+ai+OR+%22ai+agent%22+call&restrict_sr=1&sort=new&t=week",
     priority: "medium",
     category: "voice-ai",
     tag: "community",
@@ -254,7 +251,7 @@ export const RSS_SOURCES: RSSSource[] = [
   {
     name: "Hacker News",
     slug: "hn-voiceai",
-    url: "https://hnrss.org/newest?q=%22voice+ai%22+OR+vapi+OR+retell+OR+elevenlabs&count=20",
+    url: "https://hnrss.org/newest?q=%22voice+ai%22+OR+%22voice+agent%22+OR+elevenlabs&count=20",
     priority: "medium",
     category: "ai-news",
     tag: "community",
@@ -269,11 +266,207 @@ export const CATEGORY_LABELS: Record<string, string> = {
   "ai-news": "AI News",
 };
 
+// Competitor detection — use specific enough terms to avoid false positives
+// "retell" alone matches the English verb, so we use "retell ai"
 export const COMPETITOR_NAMES = [
   "vapi",
-  "retell",
+  "retell ai",
   "elevenlabs",
   "eleven labs",
   "bland ai",
   "synthflow",
 ];
+
+// More permissive matching for articles that are ALREADY from competitor-tagged sources
+export const COMPETITOR_DISPLAY_NAMES: Record<string, string> = {
+  vapi: "Vapi",
+  "vapi ai": "Vapi",
+  "retell ai": "Retell AI",
+  retell: "Retell AI",
+  elevenlabs: "ElevenLabs",
+  "eleven labs": "ElevenLabs",
+  "bland ai": "Bland AI",
+  synthflow: "Synthflow",
+};
+
+// Pain point / opportunity detection keywords
+export const PAIN_POINT_KEYWORDS = [
+  "doesn't work",
+  "not working",
+  "broken",
+  "terrible",
+  "frustrated",
+  "frustrating",
+  "switched from",
+  "alternative to",
+  "alternatives to",
+  "looking for alternative",
+  "moved away",
+  "moved from",
+  "switching from",
+  "expensive",
+  "too expensive",
+  "overpriced",
+  "pricing is",
+  "latency",
+  "high latency",
+  "slow",
+  "buggy",
+  "unreliable",
+  "bad support",
+  "poor support",
+  "no support",
+  "customer service",
+  "downtime",
+  "outage",
+  "disappointed",
+  "worst",
+  "hate",
+  "avoid",
+  "scam",
+  "complaint",
+  "issue with",
+  "problem with",
+  "vs ",
+  " vs.",
+  "better than",
+  "worse than",
+  "compared to",
+  "comparison",
+];
+
+export const LEAD_SIGNAL_KEYWORDS = [
+  "launches",
+  "deploys",
+  "adopts",
+  "partners with",
+  "integrates",
+  "announces",
+  "unveils",
+  "introduces",
+  "rolls out",
+  "implements",
+  "building",
+  "built with",
+  "powered by",
+  "using ai",
+  "ai-powered",
+  "automate calls",
+  "automate customer",
+  "replace ivr",
+  "ai receptionist",
+  "ai phone",
+  "voice bot",
+];
+
+// Junk content filters — articles matching these are noise, not intelligence
+export const JUNK_TITLE_PATTERNS = [
+  /\b(job|hiring|resume|career|salary|internship)\b/i,
+  /\b(meme|stolen|lost my|found my)\b/i,
+  /\b(book review|movie review|game review)\b/i,
+  /\b(horoscope|recipe|workout|diet)\b/i,
+  /\bmy (psychiatrist|therapist|doctor|dentist)\b/i,
+  /\b(fanfic|fan fiction|roleplay)\b/i,
+  /\bexit strategy\b/i, // TV show, not business
+  /\bstock (price|alert|buy|sell)\b/i,
+];
+
+// Detect the signal type for an article
+export function detectSignalType(
+  title: string,
+  summary: string,
+  sourceTag?: string
+): { signalType: SignalType; signalLabel: string; competitorName?: string } {
+  const text = `${title} ${summary}`.toLowerCase();
+  const titleLower = title.toLowerCase();
+
+  // Check for competitor mentions
+  let competitorName: string | undefined;
+  for (const [key, displayName] of Object.entries(COMPETITOR_DISPLAY_NAMES)) {
+    if (text.includes(key)) {
+      competitorName = displayName;
+      break;
+    }
+  }
+
+  // Pain point detection (highest priority for community posts)
+  if (sourceTag === "community") {
+    const hasPainPoint = PAIN_POINT_KEYWORDS.some((kw) => text.includes(kw));
+    if (hasPainPoint && competitorName) {
+      return {
+        signalType: "pain-point",
+        signalLabel: `${competitorName} — User Complaint`,
+        competitorName,
+      };
+    }
+    if (hasPainPoint) {
+      return {
+        signalType: "pain-point",
+        signalLabel: "User Pain Point",
+      };
+    }
+  }
+
+  // Competitor moves
+  if (sourceTag === "competitor" || competitorName) {
+    return {
+      signalType: "competitor-move",
+      signalLabel: competitorName
+        ? `${competitorName} — News`
+        : "Competitor Activity",
+      competitorName,
+    };
+  }
+
+  // Lead signals
+  if (sourceTag === "lead") {
+    const hasLeadKeyword = LEAD_SIGNAL_KEYWORDS.some((kw) =>
+      titleLower.includes(kw)
+    );
+    if (hasLeadKeyword) {
+      return {
+        signalType: "lead-signal",
+        signalLabel: "Potential Customer",
+      };
+    }
+    return {
+      signalType: "lead-signal",
+      signalLabel: "Market Signal",
+    };
+  }
+
+  // Community discussions
+  if (sourceTag === "community") {
+    return {
+      signalType: "community",
+      signalLabel: "Community Discussion",
+    };
+  }
+
+  // Default to market news
+  return {
+    signalType: "market-news",
+    signalLabel: "Industry News",
+  };
+}
+
+// Check if an article is junk that should be filtered out
+export function isJunkArticle(title: string, summary: string): boolean {
+  for (const pattern of JUNK_TITLE_PATTERNS) {
+    if (pattern.test(title)) return true;
+  }
+
+  // If the summary is just repeating the title + source name, it's low-quality Google News
+  // But we still keep it — just note it has no real summary
+  return false;
+}
+
+// For articles from competitor sources, detect which competitor
+export function detectCompetitorFromSlug(slug: string): string | undefined {
+  if (slug.includes("vapi")) return "Vapi";
+  if (slug.includes("retell")) return "Retell AI";
+  if (slug.includes("elevenlabs")) return "ElevenLabs";
+  if (slug.includes("blandai")) return "Bland AI";
+  if (slug.includes("synthflow")) return "Synthflow";
+  return undefined;
+}

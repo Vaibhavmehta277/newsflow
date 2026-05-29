@@ -10,11 +10,19 @@ export type Section =
   | "feed"
   | "lead-alerts"
   | "competitor-watch"
+  | "reddit"
   | "youtube"
   | "blogs"
   | "edits";
 
 export type SourceTag = "competitor" | "lead" | "industry" | "community";
+
+export type SignalType =
+  | "pain-point"
+  | "competitor-move"
+  | "lead-signal"
+  | "market-news"
+  | "community";
 
 export interface Article {
   id: string;
@@ -28,6 +36,9 @@ export interface Article {
   category: ArticleCategory;
   imageUrl?: string;
   sourceTag?: SourceTag;
+  signalType?: SignalType;
+  signalLabel?: string; // e.g. "ElevenLabs", "Vapi", "Customer Complaint"
+  competitorName?: string; // which competitor this is about
 }
 
 export interface SheetRow {
