@@ -5,6 +5,15 @@ export type ArticleCategory =
   | "cx"
   | "ai-news";
 
+export type Section =
+  | "overview"
+  | "feed"
+  | "lead-alerts"
+  | "competitor-watch"
+  | "youtube"
+  | "blogs"
+  | "edits";
+
 export interface Article {
   id: string;
   title: string;
@@ -16,27 +25,6 @@ export interface Article {
   keywords: string[];
   category: ArticleCategory;
   imageUrl?: string;
-  isLocked?: boolean;
-  lockedBy?: string;
-}
-
-export interface Caption {
-  platform: "linkedin" | "twitter" | "instagram";
-  content: string;
-}
-
-export interface Draft {
-  id: string;
-  articleId: string;
-  article: Article;
-  comment: string;
-  captions: Partial<Record<"linkedin" | "twitter" | "instagram", string>>;
-  assignedTo: string;
-  assignedToEmail: string;
-  status: "saved" | "posted" | "skipped";
-  platform?: string;
-  createdAt: string;
-  updatedAt: string;
 }
 
 export interface SheetRow {
@@ -64,6 +52,4 @@ export interface KeywordGroup {
   label: string;
   category: ArticleCategory;
   keywords: string[];
-  color: string;
-  bgColor: string;
 }

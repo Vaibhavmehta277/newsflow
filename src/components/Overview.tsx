@@ -1,0 +1,313 @@
+"use client";
+
+import { useMemo } from "react";
+import {
+  Newspaper,
+  Zap,
+  Eye,
+  TrendingUp,
+  ArrowUpRight,
+  ExternalLink,
+} from "lucide-react";
+import { formatDistanceToNow } from "date-fns";
+import type { Article, SheetRow, Section } from "@/types";
+import {
+  COMPETITOR_NAMES,
+  LEAD_KEYWORDS,
+  CATEGORY_LABELS,
+} from "@/lib/keywords";
+
+interface OverviewProps {
+  articles: Article[];
+  sheetRows: SheetRow[];
+  onNavigate: (section: Section) => void;
+  onSelectArticle: (article: Article) => void;
+}
+
+function StatCard({
+  label,
+  value,
+  icon: Icon,
+  onClick,
+}: {
+  label: string;
+  value: number | string;
+  icon: React.ElementType;
+  onClick?: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className="bg-white border border-gray-200 rounded-xl p-4 hover:border-gray-300 hover:shadow-sm transition-all text-left w-full group"
+    >
+      <div className="flex items-center justify-between mb-3">
+        <div className="p-2 rounded-lg bg-gray-50">
+          <Icon className="w-4 h-4 text-gray-500" />
+        </div>
+        {onClick && (
+          <ArrowUpRight className="w-3.5 h-3.5 text-gray-300 group-hover:text-gray-500 transition-colors" />
+        )}
+      </div>
+      <p className="text-2xl font-semibold text-gray-900 tracking-tight">
+        {value}
+      </p>
+      <p className="text-[12px] text-gray-500 mt-0.5">{label}</p>
+    </button>
+  );
+}
+
+function ArticleRow({
+  article,
+  onClick,
+}: {
+  article: Article;
+  onClick: () => void;
+}) {
+  const timeAgo = formatDistanceToNow(new Date(article.publishedAt), {
+    addSuffix: true,
+  });
+
+  return (
+    <button
+      onClick={onClick}
+      className="w-full flex items-start gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors text-left group"
+    >
+      <div className="flex-1 min-w-0">
+        <p className="text-[13px] text-gray-800 font-medium leading-snug line-clamp-2 group-hover:text-gray-900">
+          {article.title}
+        </p>
+        <div className="flex items-center gap-2 mt-1.5">
+          <span className="text-[11px] text-gray-400">{article.source}</span>
+          <span className="text-[11px] text-gray-300">&middot;</span>
+          <span className="text-[11px] text-gray-400">{timeAgo}</span>
+        </div>
+      </div>
+      <ArrowUpRight className="w-3.5 h-3.5 text-gray-300 group-hover:text-gray-500 shrink-0 mt-1 transition-colors" />
+    </button>
+  );
+}
+
+export default function Overview({
+  articles,
+  sheetRows,
+  onNavigate,
+  onSelectArticle,
+}: OverviewProps) {
+  const leadAlerts = useMemo(() => {
+    return articles.filter((a) => {
+      const text = `${a.title} ${a.summary}`.toLowerCase();
+      return LEAD_KEYWORDS.some((kw) => text.includes(kw));
+    });
+  }, [articles]);
+
+  const competitorArticles = useMemo(() => {
+    return articles.filter((a) => {
+      const text = `${a.title} ${a.summary}`.toLowerCase();
+      return COMPETITOR_NAMES.some((name) => text.includes(name));
+    });
+  }, [articles]);
+
+  const todayArticles = useMemo(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    return articles.filter((a) => a.publishedAt.startsWith(today));
+  }, [articles]);
+
+  const savedCount = sheetRows.filter(
+    (r) => r.status === "saved" || r.platform === "youtube" || r.platform === "blog"
+  ).length;
+
+  // Top stories: recent lead alerts first, then other voice-ai, then everything else
+  const topStories = useMemo(() => {
+    const scored = articles.map((a) => {
+      let score = 0;
+      const text = `${a.title} ${a.summary}`.toLowerCase();
+      if (LEAD_KEYWORDS.some((kw) => text.includes(kw))) score += 10;
+      if (COMPETITOR_NAMES.some((name) => text.includes(name))) score += 8;
+      if (a.category === "voice-ai") score += 5;
+      if (a.category === "use-case") score += 3;
+      if (a.category === "market-intel") score += 3;
+      // Recency boost
+      const hoursAgo =
+        (Date.now() - new Date(a.publishedAt).getTime()) / (1000 * 60 * 60);
+      if (hoursAgo < 24) score += 3;
+      if (hoursAgo < 6) score += 2;
+      return { article: a, score };
+    });
+    return scored
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 5)
+      .map((s) => s.article);
+  }, [articles]);
+
+  return (
+    <div className="p-6 max-w-[1100px] space-y-6">
+      {/* Header */}
+      <div>
+        <h1 className="text-lg font-semibold text-gray-900">Overview</h1>
+        <p className="text-[13px] text-gray-500 mt-0.5">
+          What&apos;s happening across voice AI and your competitive landscape
+        </p>
+      </div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <StatCard
+          label="Articles Today"
+          value={todayArticles.length}
+          icon={Newspaper}
+          onClick={() => onNavigate("feed")}
+        />
+        <StatCard
+          label="Lead Alerts"
+          value={leadAlerts.length}
+          icon={Zap}
+          onClick={() => onNavigate("lead-alerts")}
+        />
+        <StatCard
+          label="Competitor Mentions"
+          value={competitorArticles.length}
+          icon={Eye}
+          onClick={() => onNavigate("competitor-watch")}
+        />
+        <StatCard
+          label="Saved Items"
+          value={savedCount}
+          icon={TrendingUp}
+          onClick={() => onNavigate("edits")}
+        />
+      </div>
+
+      {/* Main content grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+        {/* Top stories — takes 3 cols */}
+        <div className="lg:col-span-3 bg-white border border-gray-200 rounded-xl p-5">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-[14px] font-semibold text-gray-900">
+                Top Stories
+              </h3>
+              <p className="text-[11px] text-gray-400 mt-0.5">
+                Most relevant to Smallest AI right now
+              </p>
+            </div>
+            <button
+              onClick={() => onNavigate("feed")}
+              className="text-[12px] text-gray-500 hover:text-gray-700 font-medium transition-colors"
+            >
+              View all
+            </button>
+          </div>
+          {topStories.length === 0 ? (
+            <div className="py-8 text-center">
+              <p className="text-[13px] text-gray-500">
+                No articles yet. Feed is loading...
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-0.5">
+              {topStories.map((article) => (
+                <ArticleRow
+                  key={article.id}
+                  article={article}
+                  onClick={() => onSelectArticle(article)}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Right sidebar — takes 2 cols */}
+        <div className="lg:col-span-2 space-y-4">
+          {/* Lead signals */}
+          <div className="bg-white border border-gray-200 rounded-xl p-5">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-[14px] font-semibold text-gray-900 flex items-center gap-2">
+                <Zap className="w-3.5 h-3.5 text-gray-400" />
+                Lead Signals
+              </h3>
+              <button
+                onClick={() => onNavigate("lead-alerts")}
+                className="text-[12px] text-gray-500 hover:text-gray-700 font-medium transition-colors"
+              >
+                View all
+              </button>
+            </div>
+            {leadAlerts.length === 0 ? (
+              <p className="text-[12px] text-gray-400 py-4 text-center">
+                No lead signals right now
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {leadAlerts.slice(0, 3).map((a) => (
+                  <button
+                    key={a.id}
+                    onClick={() => onSelectArticle(a)}
+                    className="w-full text-left p-2 rounded-lg hover:bg-gray-50 transition-colors"
+                  >
+                    <p className="text-[12px] text-gray-700 font-medium leading-snug line-clamp-2">
+                      {a.title}
+                    </p>
+                    <p className="text-[11px] text-gray-400 mt-1">
+                      {a.source}
+                    </p>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Competitor watch */}
+          <div className="bg-white border border-gray-200 rounded-xl p-5">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-[14px] font-semibold text-gray-900 flex items-center gap-2">
+                <Eye className="w-3.5 h-3.5 text-gray-400" />
+                Competitor Watch
+              </h3>
+              <button
+                onClick={() => onNavigate("competitor-watch")}
+                className="text-[12px] text-gray-500 hover:text-gray-700 font-medium transition-colors"
+              >
+                View all
+              </button>
+            </div>
+            {competitorArticles.length === 0 ? (
+              <p className="text-[12px] text-gray-400 py-4 text-center">
+                No competitor news right now
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {competitorArticles.slice(0, 3).map((a) => {
+                  const titleLower = a.title.toLowerCase();
+                  const textLower = `${a.title} ${a.summary}`.toLowerCase();
+                  // Prefer competitor mentioned in title over summary
+                  const competitor =
+                    COMPETITOR_NAMES.find((n) => titleLower.includes(n)) ||
+                    COMPETITOR_NAMES.find((n) => textLower.includes(n)) ||
+                    "";
+                  return (
+                    <button
+                      key={a.id}
+                      onClick={() => onSelectArticle(a)}
+                      className="w-full text-left p-2 rounded-lg hover:bg-gray-50 transition-colors"
+                    >
+                      <div className="flex items-center gap-2 mb-1">
+                        {competitor && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 font-medium capitalize">
+                            {competitor}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[12px] text-gray-700 font-medium leading-snug line-clamp-2">
+                        {a.title}
+                      </p>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

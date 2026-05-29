@@ -3,20 +3,13 @@
 import { formatDistanceToNow } from "date-fns";
 import { ExternalLink, ArrowRight } from "lucide-react";
 import type { Article } from "@/types";
+import { CATEGORY_LABELS } from "@/lib/keywords";
 
 interface ArticleCardProps {
   article: Article;
   isSelected: boolean;
   onClick: () => void;
 }
-
-const CATEGORY_LABELS: Record<string, string> = {
-  "voice-ai": "Voice AI",
-  "use-case": "Use Case",
-  "market-intel": "Market Intel",
-  cx: "CX",
-  "ai-news": "AI News",
-};
 
 export default function ArticleCard({
   article,
@@ -36,7 +29,8 @@ export default function ArticleCard({
           : "bg-white border-gray-200 hover:border-gray-300 hover:shadow-sm"
       }`}
     >
-      <div className="flex items-center gap-2 mb-2.5">
+      {/* Source + time */}
+      <div className="flex items-center gap-2 mb-2">
         <span className="text-[12px] text-gray-500 font-medium">
           {article.source}
         </span>
@@ -48,27 +42,20 @@ export default function ArticleCard({
         </span>
       </div>
 
+      {/* Title */}
       <h3 className="text-[14px] font-semibold leading-snug text-gray-900 mb-1.5 group-hover:text-black transition-colors">
         {article.title}
       </h3>
 
+      {/* Summary */}
       {article.summary && (
-        <p className="text-[13px] text-gray-500 leading-relaxed line-clamp-2 mb-3">
+        <p className="text-[13px] text-gray-500 leading-relaxed line-clamp-2">
           {article.summary}
         </p>
       )}
 
-      <div className="flex items-center justify-between pt-1">
-        <div className="flex flex-wrap gap-1.5">
-          {article.keywords.slice(0, 3).map((kw) => (
-            <span
-              key={kw}
-              className="text-[11px] px-2 py-0.5 rounded-md bg-gray-50 text-gray-500 border border-gray-100"
-            >
-              {kw}
-            </span>
-          ))}
-        </div>
+      {/* Footer */}
+      <div className="flex items-center justify-end pt-2 mt-2 border-t border-gray-100">
         <div className="flex items-center gap-2 shrink-0">
           <a
             href={article.url}

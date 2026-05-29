@@ -4,8 +4,6 @@ export const KEYWORD_GROUPS: KeywordGroup[] = [
   {
     label: "Voice AI Core",
     category: "voice-ai",
-    color: "text-violet-400",
-    bgColor: "bg-violet-500/15 text-violet-300 border-violet-500/30",
     keywords: [
       "voice ai",
       "ai voice agent",
@@ -27,13 +25,15 @@ export const KEYWORD_GROUPS: KeywordGroup[] = [
       "tts",
       "neural voice",
       "speech synthesis",
+      "voice cloning",
+      "real-time voice",
+      "voice api",
+      "telephony ai",
     ],
   },
   {
     label: "Use Cases",
     category: "use-case",
-    color: "text-blue-400",
-    bgColor: "bg-blue-500/15 text-blue-300 border-blue-500/30",
     keywords: [
       "ai for healthcare",
       "medical receptionist ai",
@@ -47,16 +47,19 @@ export const KEYWORD_GROUPS: KeywordGroup[] = [
       "ai interviewer",
       "ai customer support",
       "automated customer service",
+      "ai for insurance",
+      "ai for banking",
+      "ai for hospitality",
     ],
   },
   {
     label: "Market Intel",
     category: "market-intel",
-    color: "text-amber-400",
-    bgColor: "bg-amber-500/15 text-amber-300 border-amber-500/30",
     keywords: [
       "vapi ai",
+      "vapi",
       "retell ai",
+      "retell",
       "elevenlabs",
       "bland ai",
       "synthflow",
@@ -65,31 +68,29 @@ export const KEYWORD_GROUPS: KeywordGroup[] = [
       "conversational ai investment",
       "voice ai company",
       "voice ai platform",
+      "voice ai acquisition",
+      "voice ai partnership",
     ],
   },
   {
     label: "CX & Contact Center",
     category: "cx",
-    color: "text-emerald-400",
-    bgColor: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
     keywords: [
-      "contact center",
-      "call center",
-      "customer experience",
+      "contact center ai",
+      "call center ai",
+      "customer experience ai",
       "customer service automation",
-      "ivr",
+      "ivr replacement",
       "interactive voice response",
       "cx automation",
-      "omnichannel",
+      "omnichannel ai",
+      "contact center automation",
     ],
   },
   {
     label: "AI News",
     category: "ai-news",
-    color: "text-rose-400",
-    bgColor: "bg-rose-500/15 text-rose-300 border-rose-500/30",
     keywords: [
-      "artificial intelligence",
       "large language model",
       "llm",
       "generative ai",
@@ -98,7 +99,7 @@ export const KEYWORD_GROUPS: KeywordGroup[] = [
       "anthropic",
       "google ai",
       "microsoft ai",
-      "ai startup",
+      "ai startup funding",
     ],
   },
 ];
@@ -113,9 +114,7 @@ export function detectKeywords(text: string): {
 } {
   const lower = text.toLowerCase();
   const matched: string[] = [];
-  let topCategory: import("@/types").ArticleCategory = "ai-news";
 
-  // Priority order: voice-ai > use-case > market-intel > cx > ai-news
   const priorityOrder: import("@/types").ArticleCategory[] = [
     "voice-ai",
     "use-case",
@@ -134,6 +133,7 @@ export function detectKeywords(text: string): {
     }
   }
 
+  let topCategory: import("@/types").ArticleCategory = "ai-news";
   for (const cat of priorityOrder) {
     if (categoryMatches[cat]?.length) {
       topCategory = cat;
@@ -147,19 +147,15 @@ export function detectKeywords(text: string): {
   };
 }
 
+// Curated RSS sources — focused on voice AI and direct industry relevance.
+// Removed broad tech sources (The Verge, Ars Technica, Ben's Bites, TLDR AI)
+// that were pulling in too many irrelevant articles.
 export const RSS_SOURCES: RSSSource[] = [
-  // Voice AI Specific - High Priority
+  // Voice AI — High Priority (always show)
   {
     name: "Voicebot.ai",
     slug: "voicebot",
     url: "https://voicebot.ai/feed/",
-    priority: "high",
-    category: "voice-ai",
-  },
-  {
-    name: "Chatbots Life",
-    slug: "chatbotslife",
-    url: "https://chatbotslife.com/feed",
     priority: "high",
     category: "voice-ai",
   },
@@ -177,7 +173,7 @@ export const RSS_SOURCES: RSSSource[] = [
     priority: "high",
     category: "voice-ai",
   },
-  // AI News - Broad
+  // AI News — Medium Priority (keyword-filtered)
   {
     name: "TechCrunch AI",
     slug: "techcrunch",
@@ -193,38 +189,9 @@ export const RSS_SOURCES: RSSSource[] = [
     category: "ai-news",
   },
   {
-    name: "The Verge",
-    slug: "theverge",
-    url: "https://www.theverge.com/rss/index.xml",
-    priority: "medium",
-    category: "ai-news",
-  },
-  {
-    name: "Ars Technica",
-    slug: "arstechnica",
-    url: "https://feeds.arstechnica.com/arstechnica/index",
-    priority: "medium",
-    category: "ai-news",
-  },
-  {
     name: "MIT Tech Review",
     slug: "mitreview",
     url: "https://www.technologyreview.com/feed/",
-    priority: "medium",
-    category: "ai-news",
-  },
-  // Newsletters
-  {
-    name: "Ben's Bites",
-    slug: "bensbites",
-    url: "https://bensbites.beehiiv.com/feed",
-    priority: "medium",
-    category: "ai-news",
-  },
-  {
-    name: "TLDR AI",
-    slug: "tldrai",
-    url: "https://tldr.tech/ai/rss",
     priority: "medium",
     category: "ai-news",
   },
@@ -236,54 +203,34 @@ export const RSS_SOURCES: RSSSource[] = [
     priority: "medium",
     category: "cx",
   },
-  {
-    name: "Customer Think",
-    slug: "customerthink",
-    url: "https://customerthink.com/feed",
-    priority: "medium",
-    category: "cx",
-  },
-  {
-    name: "CallCentre Helper",
-    slug: "callcentrehelper",
-    url: "https://www.callcentrehelper.com/feed",
-    priority: "medium",
-    category: "cx",
-  },
 ];
 
-export const CATEGORY_META: Record<
-  string,
-  { label: string; color: string; bgColor: string; dotColor: string }
-> = {
-  "voice-ai": {
-    label: "Voice AI",
-    color: "text-violet-400",
-    bgColor: "bg-violet-500/15 text-violet-300 border border-violet-500/30",
-    dotColor: "bg-violet-400",
-  },
-  "use-case": {
-    label: "Use Case",
-    color: "text-blue-400",
-    bgColor: "bg-blue-500/15 text-blue-300 border border-blue-500/30",
-    dotColor: "bg-blue-400",
-  },
-  "market-intel": {
-    label: "Market Intel",
-    color: "text-amber-400",
-    bgColor: "bg-amber-500/15 text-amber-300 border border-amber-500/30",
-    dotColor: "bg-amber-400",
-  },
-  cx: {
-    label: "CX & CC",
-    color: "text-emerald-400",
-    bgColor: "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30",
-    dotColor: "bg-emerald-400",
-  },
-  "ai-news": {
-    label: "AI News",
-    color: "text-rose-400",
-    bgColor: "bg-rose-500/15 text-rose-300 border border-rose-500/30",
-    dotColor: "bg-rose-400",
-  },
+export const CATEGORY_LABELS: Record<string, string> = {
+  "voice-ai": "Voice AI",
+  "use-case": "Use Case",
+  "market-intel": "Market Intel",
+  cx: "CX & Contact Center",
+  "ai-news": "AI News",
 };
+
+export const COMPETITOR_NAMES = [
+  "vapi",
+  "retell",
+  "elevenlabs",
+  "bland ai",
+  "synthflow",
+];
+
+export const LEAD_KEYWORDS = [
+  "voice ai",
+  "ai voice agent",
+  "voice bot",
+  "ai receptionist",
+  "ai call center",
+  "ai contact center",
+  "ai phone agent",
+  "conversational ai",
+  "ai scheduling",
+  "automated calling",
+  "telephony ai",
+];

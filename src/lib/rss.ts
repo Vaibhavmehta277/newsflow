@@ -61,7 +61,7 @@ async function fetchSource(
     const feed = await parser.parseURL(source.url);
     const articles: Article[] = [];
 
-    for (const item of (feed.items || []).slice(0, 15)) {
+    for (const item of (feed.items || []).slice(0, 12)) {
       const title = item.title?.trim() || "";
       const url = item.link?.trim() || "";
       if (!title || !url) continue;
@@ -69,11 +69,9 @@ async function fetchSource(
       const rawText = `${title} ${item.contentSnippet || item.summary || ""}`;
       const { keywords, category } = detectKeywords(rawText);
 
-      if (
-        source.priority === "medium" &&
-        category === "ai-news" &&
-        keywords.length === 0
-      ) {
+      // Strict filtering: medium-priority sources MUST match at least one keyword
+      // that isn't just generic "ai" terms
+      if (source.priority === "medium" && keywords.length === 0) {
         continue;
       }
 
@@ -115,11 +113,15 @@ const CACHE_TTL = 15 * 60 * 1000;
 
 export async function fetchAllFeeds(forceRefresh = false): Promise<Article[]> {
   const now = Date.now();
-  if (!forceRefresh && cachedArticles.length > 0 && now - lastFetchTime < CACHE_TTL) {
+  if (
+    !forceRefresh &&
+    cachedArticles.length > 0 &&
+    now - lastFetchTime < CACHE_TTL
+  ) {
     return cachedArticles;
   }
 
-  const BATCH_SIZE = 5;
+  const BATCH_SIZE = 4;
   const allArticles: Article[] = [];
 
   for (let i = 0; i < RSS_SOURCES.length; i += BATCH_SIZE) {
